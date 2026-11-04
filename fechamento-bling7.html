@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento de Venda — Bling</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --border: #2a2e38;
+    --text: #e8e9ec; --muted: #9aa0ab; --accent: #4f8cff;
+    --green: #35c56a; --red: #ff5c5c; --amber: #e5a93b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); padding: 24px;
+  }
+  h1 { font-size: 1.25rem; margin-bottom: 4px; }
+  h3 { margin: 0 0 4px; }
+  p.sub { color: var(--muted); margin-top: 0; font-size: 0.9rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; margin-bottom: 18px;
+  }
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin: 10px 0 4px; }
+  input, select {
+    width: 100%; padding: 9px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: #10131a; color: var(--text);
+    font-size: 0.9rem; color-scheme: dark;
+  }
+  button {
+    margin-top: 14px; padding: 10px 16px; border: none; border-radius: 6px;
+    background: var(--accent); color: white; font-weight: 600; cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button.secondary { background: #2a2e38; }
+  button.export { background: var(--green); }
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 30px;
+    text-align: center; color: var(--muted); cursor: pointer;
+  }
+  .dropzone:hover { border-color: var(--accent); color: var(--text); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  th, td { padding: 5px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+  th.editcol { color: var(--accent); }
+  td input { padding: 4px 4px; width: 56px; font-size: 0.76rem; }
+  .table-wrap { max-height: 500px; overflow: auto; margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .lucro-pos { color: var(--green); font-weight: 700; }
+  .lucro-neg { color: var(--red); font-weight: 700; }
+  .status { font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
+  .status.err { color: var(--red); }
+  .status.ok { color: var(--green); }
+  .bulk-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+  .bulk-row > div { flex: 1; min-width: 120px; }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 14px; }
+  .resumo .item { background: #10131a; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .resumo .item .rlabel { color: var(--muted); font-size: 0.75rem; }
+  .resumo .item .rvalue { font-size: 1.05rem; font-weight: 700; margin-top: 2px; }
+  .resumo .item.destaque { border-color: var(--accent); grid-column: 1 / -1; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; }
+  .checkbox-row input[type="checkbox"] { width: auto; }
+  .filtro-vendedor-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .filtro-vendedor-row select { flex: 1; }
+  .filtro-vendedor-row button { margin-top: 0; padding: 8px 12px; flex: 0 0 auto; }
+
+  /* Resumo por pedido */
+  .pedido-card { background: #10131a; border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .pedido-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  .pedido-head .titulo { font-weight: 700; font-size: 1rem; }
+  .pedido-head .sub { color: var(--muted); font-size: 0.8rem; margin-left: 8px; font-weight: 400; }
+  .pedido-totais { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 8px; margin-top: 10px; }
+  .pedido-totais .t { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .pedido-totais .t .l { color: var(--muted); font-size: 0.7rem; }
+  .pedido-totais .t .v { font-weight: 700; font-size: 0.88rem; margin-top: 1px; }
+  .parcelas-box { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .parcelas-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .parcelas-top label { margin: 0; }
+  .parcelas-top input { width: 80px; }
+  .chk { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 0.85rem; cursor: pointer; }
+  .parcelas-top .chk input, .base-global .chk input { width: auto; }
+  .base-label { color: var(--muted); font-size: 0.8rem; margin-left: 10px; }
+  .base-valor { font-weight: 700; font-size: 0.88rem; }
+  .base-global { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+  .base-global button { margin-top: 0; padding: 7px 12px; }
+  .parcela-row { display: grid; grid-template-columns: 110px 170px 150px 90px minmax(160px, 1fr); gap: 8px; align-items: center; margin-top: 6px; font-size: 0.85rem; }
+  .btn-status { margin-top: 0; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; border: 1px solid; }
+  .btn-status.aberto { background: #2b2412; color: var(--amber); border-color: #5a4a1c; }
+  .btn-status.pago { background: #12301f; color: var(--green); border-color: #1f6b3e; }
+  .pago-info { font-size: 0.8rem; margin-top: 4px; color: var(--muted); }
+  .parcela-row input { padding: 6px 8px; width: 100%; }
+  .check-parcelas { font-size: 0.78rem; margin-top: 8px; }
+  .check-parcelas.ok { color: var(--green); }
+  .check-parcelas.warn { color: var(--amber); }
+
+  /* Telas: entrada, início, trabalho */
+  .tela-entrada { max-width: 460px; margin: 40px auto; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .row2 { grid-template-columns: 1fr; } }
+  .top-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .top-actions button { margin-top: 0; }
+  .lista-fech { width: 100%; margin-top: 12px; }
+  .lista-fech td, .lista-fech th { white-space: normal; padding: 8px 8px; font-size: 0.82rem; }
+  .lista-fech th { position: static; }
+  .lista-fech button { margin-top: 0; padding: 6px 12px; }
+  .barra-fech {
+    position: sticky; top: 0; z-index: 20; background: var(--card); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 18px;
+    display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  .barra-fech .tit { font-weight: 700; font-size: 1.05rem; }
+  .barra-fech .meta { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .barra-fech .acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .barra-fech .acoes button { margin-top: 0; }
+  .ind { font-size: 0.8rem; font-weight: 600; }
+  .ind.sujo { color: var(--amber); }
+  .ind.salvo { color: var(--green); }
+  button.perigo { background: #5a1f24; color: #ffb3b3; border: 1px solid #8a2d35; }
+  button.perigo:hover { background: #8a2d35; }
+  .liq { color: var(--muted); font-size: 0.78rem; }
+  .dev-box { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .dev-box .parcelas-top { gap: 14px; }
+  .nfe-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .nfe-row label { margin: 0; }
+  .nfe-row input { width: 220px; }
+</style>
+</head>
+<body>
+
+<h1>Fechamento de Venda — Bling</h1>
+<p class="sub">Importa a planilha do Bling, calcula o lucro líquido, gera o resumo por pedido com parcelas e guarda cada fechamento no Google Sheets</p>
+
+<!-- TELA: INÍCIO (novo fechamento + lista) -->
+<div id="telaInicio" style="display:none">
+  <div class="card">
+    <div class="top-actions">
+      <h3>Novo fechamento</h3>
+    </div>
+    <div class="row2">
+      <div><label>Nome do fechamento</label><input id="novoNome" placeholder="Ex: Relatório de Venda 553"></div>
+      <div><label>Responsável</label><input id="novoResp" placeholder="Ex: Marcos"></div>
+      <div><label>Data de criação</label><input id="novoData" readonly></div>
+    </div>
+    <button onclick="criarNovo()" id="btnCriar">Criar fechamento</button>
+    <div id="statusNovo" class="status"></div>
+  </div>
+
+  <div class="card">
+    <div class="top-actions">
+      <h3>Fechamentos realizados <span class="hint" style="font-weight:400">(do mais novo para o mais antigo)</span></h3>
+      <button class="secondary" onclick="carregarLista()">Atualizar lista</button>
+    </div>
+    <label>Buscar por nome, responsável ou código</label>
+    <input id="busca" placeholder="Digite para filtrar..." oninput="renderizarLista()">
+    <div id="statusLista" class="status"></div>
+    <div id="listaFechamentos"></div>
+  </div>
+</div>
+
+<!-- TELA: TRABALHO (um fechamento aberto) -->
+<div id="telaTrabalho" style="display:none">
+<div class="barra-fech">
+  <div>
+    <div class="tit" id="cabNome"></div>
+    <div class="meta" id="cabMeta"></div>
+  </div>
+  <div class="acoes">
+    <span class="ind salvo" id="indicador">✓ tudo salvo</span>
+    <button class="perigo" onclick="excluirAtual()">Excluir</button>
+    <button class="secondary" onclick="voltarLista()">← Fechamentos</button>
+    <button class="export" onclick="salvarAtual()" id="btnSalvar">Salvar</button>
+  </div>
+</div>
+<div id="statusSalvar" class="status" style="margin:-8px 0 12px"></div>
+
+<!-- ETAPA 1: IMPORTAR -->
+<div class="card" id="cardImportar">
+  <h3>1. Importar planilha do Bling</h3>
+  <div class="dropzone" id="dropzone">
+    Clique aqui ou arraste o arquivo (.xls, .xlsx ou .csv) exportado do Bling
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+  <div id="statusImport" class="status"></div>
+</div>
+
+<!-- ETAPA 2: AJUSTES, TABELA, RESUMOS -->
+<div class="card" id="cardTabela" style="display:none">
+  <h3>2. Ajustar valores e conferir o lucro líquido</h3>
+
+  <label>Nome do fechamento</label>
+  <input id="nomeRelatorio" placeholder="Ex: Relatório de Venda 553" value="Relatório de Venda">
+  <p class="hint" style="margin-top:2px">Esse nome vira o título dentro do Excel e do PDF, o nome do arquivo baixado e o nome na lista de fechamentos (gravado ao clicar em Salvar).</p>
+
+  <div class="bulk-row">
+    <div>
+      <label>Valor NF (% do valor total)</label>
+      <input id="bulkNF" type="number" step="0.1" value="100">
+    </div>
+    <div>
+      <label>Imposto (%)</label>
+      <input id="bulkImposto" type="number" step="0.01" value="6">
+    </div>
+    <div>
+      <label>Frete (%)</label>
+      <input id="bulkFrete" type="number" step="0.01" value="5.3">
+    </div>
+    <div>
+      <label>Comissão (%)</label>
+      <input id="bulkComissao" type="number" step="0.01" value="6">
+    </div>
+    <div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="bulkCustoOpAtivo" onchange="toggleCustoOp()">
+        <label style="margin:0">Aplicar custo operacional (%)</label>
+      </div>
+      <input id="bulkCustoOp" type="number" step="0.01" value="0" disabled>
+    </div>
+    <div>
+      <label>Recebedor</label>
+      <input id="bulkRecebedor" type="text" placeholder="Ex: Marcão">
+    </div>
+    <div style="flex:0 0 auto">
+      <button class="secondary" onclick="aplicarEmMassa()">Aplicar a todas as linhas</button>
+    </div>
+  </div>
+  <p class="hint">
+    Imposto, Frete e Comissão incidem sobre o Valor NF (que por padrão é 100% do Valor Total — mude o % se a nota cobrir só parte da venda).
+    O Custo Unitário vem calculado da planilha, mas pode ser editado linha a linha quando o custo do Bling estiver desatualizado — o Custo Total e o Lucro são recalculados automaticamente.
+    O Custo Operacional fica em 0% por padrão; marque a caixa acima se quiser incluir esse desconto no lucro líquido.
+  </p>
+
+  <label>Filtrar por vendedor</label>
+  <div id="filtrosVendedorContainer"></div>
+  <button class="secondary" onclick="adicionarFiltroVendedor()">+ Adicionar vendedor</button>
+  <p class="hint" style="margin-top:6px">
+    Com o filtro ativo, a tabela, os resumos, o "Aplicar a todas as linhas" e a exportação (Excel/PDF) passam a valer só para os vendedores escolhidos.
+    Deixe em "Todos os vendedores" pra voltar a ver tudo.
+  </p>
+
+  <h3 style="margin-top:18px">Itens (ordenados por nº do pedido e, dentro do pedido, por descrição)</h3>
+  <div class="table-wrap">
+    <table id="tabela">
+      <thead>
+        <tr>
+          <th>Nº Pedido</th><th>Vendedor</th><th>Cliente</th><th class="editcol">Recebedor</th><th>Descrição</th>
+          <th>Qtd</th><th>Valor Total</th><th>Valor Uni.</th>
+          <th class="editcol">Custo Uni.</th><th>Custo Total</th><th>Lucro Total</th>
+          <th class="editcol">NF %</th><th>Valor NF</th>
+          <th class="editcol">Imposto %</th><th>Imposto R$</th>
+          <th class="editcol">Frete %</th><th>Frete R$</th>
+          <th class="editcol">Comissão %</th><th>Comissão R$</th>
+          <th class="editcol">Custo Oper. %</th><th>Custo Oper. R$</th>
+          <th>Lucro Líquido</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaBody"></tbody>
+    </table>
+  </div>
+
+  <h3 style="margin-top:22px">Resumo por pedido de venda</h3>
+  <p class="hint">Informe o número de parcelas e a data de pagamento de cada uma. O valor de cada parcela vem dividido igualmente sobre a base escolhida (valor faturado, custo da mercadoria, ou a soma dos dois), mas pode ser editado.</p>
+  <div class="base-global">
+    <span class="base-label" style="margin-left:0">Base das parcelas em todos os pedidos:</span>
+    <label class="chk"><input type="checkbox" id="baseGlobalFaturado" checked> Valor faturado</label>
+    <label class="chk"><input type="checkbox" id="baseGlobalCusto"> Custo da mercadoria</label>
+    <button class="secondary" onclick="aplicarBaseATodos()">Aplicar a todos os pedidos</button>
+  </div>
+  <div id="resumoPedidos"></div>
+
+  <h3 style="margin-top:22px">Resumo geral</h3>
+  <div class="resumo">
+    <div class="item"><div class="rlabel">Valor Total Faturado</div><div class="rvalue" id="rValorTotal">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Custo Total da Mercadoria</div><div class="rvalue" id="rCustoTotal">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Valor Total da Nota Fiscal</div><div class="rvalue" id="rValorNF">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Total em Impostos</div><div class="rvalue" id="rImposto">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Total em Frete</div><div class="rvalue" id="rFrete">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Total em Comissão</div><div class="rvalue" id="rComissao">R$ 0,00</div></div>
+    <div class="item"><div class="rlabel">Total em Custo Operacional</div><div class="rvalue" id="rCustoOp">R$ 0,00</div></div>
+    <div class="item destaque"><div class="rlabel">Lucro Líquido Total</div><div class="rvalue" id="lucroTotal" style="font-size:1.4rem">R$ 0,00</div></div>
+  </div>
+
+  <h3 style="margin-top:22px">Resumo por recebedor</h3>
+  <p class="hint">Agrupa os itens pelo campo Recebedor, separado por pedido de venda, e mostra quanto cada recebedor representa em cada pedido e no total.
+    "Recebido", "A devolver", "A repassar" (recebido já com a devolução descontada) e "A receber" são do pedido e ficam rateados pela participação do recebedor na base de cálculo das parcelas.</p>
+  <div id="resumoRecebedores"></div>
+
+  <button class="export" onclick="exportarExcel()">Baixar Excel final</button>
+  <button class="export" onclick="exportarPDF()" style="background:#c0392b">Baixar PDF</button>
+  <div id="statusExport" class="status"></div>
+</div>
+</div><!-- /telaTrabalho -->
+
+<script>
+let linhas = [];
+let vendedoresDisponiveis = [];
+let parcelasPorPedido = {};   // key do pedido -> { n, itens: [{data, valor|null}] }
+let gruposAtuais = [];        // pedidos exibidos no momento (respeita o filtro)
+
+// ======================================================================
+// UTILITÁRIOS
+// ======================================================================
+function esc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmt(n) {
+  return (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/ /g, ' ');
+}
+
+function parseNumeroBR(v) {
+  if (typeof v === 'number') return v;
+  if (v === undefined || v === null || v === '') return 0;
+  const s = String(v).trim().replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// Quantidade sempre como número inteiro (sem fração)
+function parseQtdBR(v) { return Math.round(parseNumeroBR(v)); }
+
+function formatarDataImport(v) {
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  }
+  return v;
+}
+
+function nomeArquivoSeguro(nome) {
+  const base = (nome || '').trim() || 'relatorio-fechamento';
+  return base.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function acharColuna(colunas, candidatos) {
+  const normalizar = s => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for (const cand of candidatos) {
+    const alvo = normalizar(cand);
+    const achada = colunas.find(c => normalizar(c) === alvo);
+    if (achada) return achada;
+  }
+  return null;
+}
+
+// yyyy-mm-dd -> dd/mm/yyyy
+function dataBR(iso) {
+  if (!iso) return '';
+  const p = iso.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+}
+// yyyy-mm-dd -> serial de data do Excel
+function dataSerialExcel(iso) {
+  if (!iso) return null;
+  const p = iso.split('-').map(Number);
+  if (p.length !== 3 || p.some(isNaN)) return null;
+  return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 86400000) + 25569;
+}
+
+// ======================================================================
+// IMPORTAÇÃO
+// ======================================================================
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.onclick = () => fileInput.click();
+dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; };
+dropzone.ondragleave = () => { dropzone.style.borderColor = 'var(--border)'; };
+dropzone.ondrop = (e) => {
+  e.preventDefault();
+  dropzone.style.borderColor = 'var(--border)';
+  if (e.dataTransfer.files.length) processarArquivo(e.dataTransfer.files[0]);
+};
+fileInput.onchange = (e) => { if (e.target.files.length) processarArquivo(e.target.files[0]); };
+
+// ---- Parser de CSV próprio (mantém tudo como texto, sem a lib "adivinhar" número/acentuação) ----
+function detectarDelimitadorCSV(texto) {
+  const primeira = (texto.split(/\r\n|\n/)[0] || '');
+  const pv = (primeira.match(/;/g) || []).length;
+  const vg = (primeira.match(/,/g) || []).length;
+  return pv >= vg ? ';' : ',';
+}
+
+function dividirLinhasCSV(texto, delim) {
+  const out = [];
+  let linha = [], campo = '', aspas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const ch = texto[i];
+    if (aspas) {
+      if (ch === '"') {
+        if (texto[i + 1] === '"') { campo += '"'; i++; } else { aspas = false; }
+      } else { campo += ch; }
+    } else if (ch === '"') { aspas = true; }
+    else if (ch === delim) { linha.push(campo); campo = ''; }
+    else if (ch === '\r') { /* ignora */ }
+    else if (ch === '\n') { linha.push(campo); campo = ''; out.push(linha); linha = []; }
+    else { campo += ch; }
+  }
+  if (campo.length || linha.length) { linha.push(campo); out.push(linha); }
+  return out.filter(l => l.some(c => c.trim() !== ''));
+}
+
+function csvParaObjetos(texto) {
+  if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+  const delim = detectarDelimitadorCSV(texto);
+  const rows = dividirLinhasCSV(texto, delim);
+  if (!rows.length) return [];
+  const cab = rows[0].map(h => h.trim());
+  const objs = [];
+  for (let i = 1; i < rows.length; i++) {
+    const o = {};
+    cab.forEach((h, idx) => { o[h] = rows[i][idx] !== undefined ? rows[i][idx].trim() : ''; });
+    objs.push(o);
+  }
+  return objs;
+}
+
+// Lê de volta um Excel gerado por este sistema (abas Detalhe, Resumo por Pedido e Parcelas).
+// Devolve false se a aba Detalhe não tiver o formato esperado (aí vale a importação normal).
+function importarRelatorioExportado(wb) {
+  const grade = XLSX.utils.sheet_to_json(wb.Sheets['Detalhe'], { header: 1, defval: '' });
+  const norm0 = v => String(v).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const hi = grade.findIndex(r => r.some(c => norm0(c) === 'custo uni') && r.some(c => norm0(c) === 'numero do pedido'));
+  if (hi < 0) return false;
+  const json = XLSX.utils.sheet_to_json(wb.Sheets['Detalhe'], { range: hi, defval: '' });
+  const cols = Object.keys(json[0] || {});
+  const C = nomes => acharColuna(cols, nomes);
+  const cPed = C(['Número do pedido']), cDesc = C(['Descrição']), cQtd = C(['Quantidade']),
+    cVT = C(['Valor total']), cCusto = C(['CUSTO UNI']);
+  if (!cPed || !cQtd || !cVT || !cCusto) return false;
+  const cData = C(['Data']), cNome = C(['Nome']), cCont = C(['Nome - Contato']), cRec = C(['Recebedor']),
+    cNF = C(['NF %']), cImp = C(['IMPOSTO %']), cFre = C(['FRETE %']), cCom = C(['COMISSÃO %']),
+    cOp = C(['CUSTO OPERACIONAL %']);
+  const num = (l, c, padrao) => (c && l[c] !== '' && l[c] !== null) ? (parseNumeroBRouNumero(l[c])) : padrao;
+  const novas = [];
+  json.forEach(l => {
+    const ped = String(l[cPed] === undefined ? '' : l[cPed]).trim();
+    const desc = cDesc ? String(l[cDesc]).trim() : '';
+    if (!ped && !desc) return;             // linha de TOTAL / vazia
+    novas.push({
+      data: cData ? formatarDataImport(l[cData]) : '', nome: cNome ? String(l[cNome]).trim() : '',
+      contato: cCont ? l[cCont] : '', pedido: ped, descricao: desc,
+      qtd: Math.round(num(l, cQtd, 0)), valorTotal: num(l, cVT, 0), custoUnitario: num(l, cCusto, 0),
+      pctNF: num(l, cNF, 100), pctImposto: num(l, cImp, 0), pctFrete: num(l, cFre, 0),
+      pctComissao: num(l, cCom, 0), pctCustoOp: num(l, cOp, 0),
+      recebedor: cRec ? String(l[cRec]).trim() : ''
+    });
+  });
+  if (!novas.length) return false;
+  linhas = novas;
+  ordenarLinhas();
+  parcelasPorPedido = {};
+
+  // NFe (aba Resumo por Pedido)
+  if (wb.Sheets['Resumo por Pedido']) {
+    const g = XLSX.utils.sheet_to_json(wb.Sheets['Resumo por Pedido'], { header: 1, defval: '' });
+    const h = g.findIndex(r => norm0(r[0]) === 'pedido' && /nfe/.test(norm0(r[1])));
+    if (h >= 0) g.slice(h + 1).forEach(r => {
+      const ped = String(r[0]).trim();
+      if (ped && ped.toUpperCase() !== 'TOTAL' && String(r[1]).trim()) getParc(ped).nfe = String(r[1]).trim();
+    });
+  }
+  // A devolver (aba A Devolver)
+  if (wb.Sheets['A Devolver']) {
+    const g = XLSX.utils.sheet_to_json(wb.Sheets['A Devolver'], { header: 1, defval: '' });
+    const h = g.findIndex(r => norm0(r[0]) === 'pedido' && r.some(c => norm0(c) === 'itens a devolver'));
+    if (h >= 0) {
+      const ci = g[h].findIndex(c => norm0(c) === 'itens a devolver');
+      g.slice(h + 1).forEach(r => {
+        const ped = String(r[0]).trim();
+        if (ped && ped.toUpperCase() !== 'TOTAL' && String(r[ci]).trim()) getParc(ped).dev = devDeTexto(String(r[ci]));
+      });
+    }
+  }
+  // Parcelas (aba Parcelas)
+  if (wb.Sheets['Parcelas']) {
+    const g = XLSX.utils.sheet_to_json(wb.Sheets['Parcelas'], { header: 1, defval: '' });
+    const h = g.findIndex(r => norm0(r[0]) === 'pedido' && norm0(r[2]) === 'parcela');
+    const porPed = {};
+    if (h >= 0) g.slice(h + 1).forEach(r => {
+      const ped = String(r[0]).trim(), m = String(r[2]).match(/^(\d+)\s*\/\s*(\d+)$/);
+      if (!ped || !m) return;
+      (porPed[ped] = porPed[ped] || []).push({ i: Number(m[1]), n: Number(m[2]), r });
+    });
+    Object.keys(porPed).forEach(ped => {
+      const rs = porPed[ped].sort((a, b) => a.i - b.i);
+      const p = getParc(ped);
+      p.n = Math.max(1, Math.min(60, rs[0].n || rs.length));
+      const rot = String(rs[0].r[6] || '');
+      const custo = /custo/i.test(rot);
+      p.base = { faturado: /faturado/i.test(rot) || !custo, custo };
+      p.itens = rs.slice(0, p.n).map(x => {
+        const d = x.r[3];
+        let iso = '';
+        if (typeof d === 'number') iso = new Date(Math.round((d - 25569) * 86400000)).toISOString().slice(0, 10);
+        else iso = dataBRparaISO(d);
+        return { data: iso, valor: (x.r[4] === '' ? null : Number(x.r[4])), pago: String(x.r[5]) === 'Pago' };
+      });
+      while (p.itens.length < p.n) p.itens.push({ data: '', valor: null, pago: false });
+    });
+    // valores iguais à divisão automática voltam a ser "automáticos" (acompanham mudanças de base)
+    agruparPorPedido(true).forEach(g => {
+      const p = getParc(g.key);
+      const todos = p.itens.every(it => it.valor !== null);
+      if (todos) {
+        const bkp = p.itens.map(it => it.valor);
+        p.itens.forEach(it => { it.valor = null; });
+        const padrao = valoresParcelas(g.key, totalBaseParcelas(g));
+        const igual = padrao.every((v, k) => Math.abs(v - bkp[k]) < 0.006);
+        if (!igual) p.itens.forEach((it, k) => { it.valor = bkp[k]; });
+      }
+    });
+  }
+  return true;
+}
+function parseNumeroBRouNumero(v) { return typeof v === 'number' ? v : parseNumeroBR(v); }
+
+function processarArquivo(arquivo) {
+  fileInput.value = '';
+  if (linhas.length && !confirm('Este fechamento já tem itens. Importar um novo arquivo substitui os itens, as parcelas e os números de NFe atuais. Continuar?')) return;
+  const status = document.getElementById('statusImport');
+  status.textContent = 'Lendo arquivo...'; status.className = 'status';
+  const ehCSV = /\.csv$/i.test(arquivo.name);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      let json;
+      if (ehCSV) {
+        json = csvParaObjetos(e.target.result);
+      } else {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        if (wb.SheetNames.includes('Detalhe') && importarRelatorioExportado(wb)) {
+          status.textContent = linhas.length + ' linha(s) importada(s) do relatório exportado (custos, percentuais, parcelas e NFe preservados).';
+          status.className = 'status ok';
+          popularFiltroVendedores();
+          renderizarTabela();
+          document.getElementById('cardTabela').style.display = 'block';
+          document.getElementById('cardTabela').scrollIntoView({ behavior: 'smooth' });
+          verificarSujo();
+          return;
+        }
+        json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+      }
+      if (!json.length) throw new Error('A planilha está vazia.');
+
+      const colunas = Object.keys(json[0]);
+      const colData = acharColuna(colunas, ['Data']);
+      const colNome = acharColuna(colunas, ['Nome']);
+      const colContato = acharColuna(colunas, ['Nome - Contato', 'Contato']);
+      const colPedido = acharColuna(colunas, ['Número do pedido', 'Numero do pedido', 'Nº do pedido']);
+      const colDescricao = acharColuna(colunas, ['Descrição', 'Descricao']);
+      const colQtd = acharColuna(colunas, ['Quantidade']);
+      const colValorTotal = acharColuna(colunas, ['Valor total']);
+      const colCusto = acharColuna(colunas, ['Preço de custo', 'Preco de custo']);
+
+      if (!colValorTotal || !colQtd) {
+        throw new Error('Não encontrei as colunas "Valor total" e/ou "Quantidade". Confira se é o mesmo modelo exportado do Bling.');
+      }
+      const avisoCusto = !colCusto
+        ? ' Atenção: não encontrei a coluna de custo — os custos ficarão em 0, ajuste manualmente.' : '';
+
+      linhas = json.map(l => {
+        const qtd = parseQtdBR(l[colQtd]);
+        const valorTotal = parseNumeroBR(l[colValorTotal]);
+        const custoTotalOriginal = colCusto ? parseNumeroBR(l[colCusto]) : 0;
+        return {
+          data: colData ? formatarDataImport(l[colData]) : '',
+          nome: colNome ? String(l[colNome]).trim() : '',
+          contato: colContato ? l[colContato] : '',
+          pedido: colPedido ? String(l[colPedido]).trim() : '',
+          descricao: colDescricao ? String(l[colDescricao]).trim() : '',
+          qtd: qtd,
+          valorTotal: valorTotal,
+          custoUnitario: qtd ? custoTotalOriginal / qtd : 0,
+          pctNF: 100, pctImposto: 6, pctFrete: 5.3, pctComissao: 6, pctCustoOp: 0,
+          recebedor: ''
+        };
+      });
+
+      ordenarLinhas();
+      parcelasPorPedido = {};
+
+      status.textContent = linhas.length + ' linha(s) importada(s), ordenadas por nº do pedido e descrição.' + avisoCusto;
+      status.className = avisoCusto ? 'status err' : 'status ok';
+      popularFiltroVendedores();
+      renderizarTabela();
+      document.getElementById('cardTabela').style.display = 'block';
+      document.getElementById('cardTabela').scrollIntoView({ behavior: 'smooth' });
+      verificarSujo();
+    } catch (err) {
+      status.textContent = 'Erro ao ler o arquivo: ' + err.message;
+      status.className = 'status err';
+    }
+  };
+  if (ehCSV) reader.readAsText(arquivo, 'UTF-8');
+  else reader.readAsArrayBuffer(arquivo);
+}
+
+// ======================================================================
+// ORDENAÇÃO: 1º nº do pedido (numérico), 2º descrição (A–Z)
+// ======================================================================
+function ordenarLinhas() {
+  const cmp = (a, b) => String(a || '').trim().localeCompare(String(b || '').trim(), 'pt-BR', { numeric: true, sensitivity: 'base' });
+  linhas.sort((x, y) => cmp(x.pedido, y.pedido) || cmp(x.descricao, y.descricao));
+}
+
+// ======================================================================
+// FILTRO POR VENDEDOR
+// ======================================================================
+function popularFiltroVendedores() {
+  vendedoresDisponiveis = Array.from(new Set(linhas.map(l => l.nome).filter(v => v)))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  document.getElementById('filtrosVendedorContainer').innerHTML = '';
+  adicionarFiltroVendedor(true);
+}
+
+function criarOptionsVendedor() {
+  let html = '<option value="">Todos os vendedores</option>';
+  vendedoresDisponiveis.forEach(v => { html += `<option value="${esc(v)}">${esc(v)}</option>`; });
+  return html;
+}
+
+function adicionarFiltroVendedor(primeira) {
+  const container = document.getElementById('filtrosVendedorContainer');
+  const div = document.createElement('div');
+  div.className = 'filtro-vendedor-row';
+  div.innerHTML = `
+    <select class="filtro-vendedor-select" onchange="renderizarTabela()">${criarOptionsVendedor()}</select>
+    ${primeira === true ? '' : '<button type="button" class="secondary" onclick="this.parentElement.remove(); renderizarTabela();">×</button>'}
+  `;
+  container.appendChild(div);
+}
+
+function vendedoresSelecionados() {
+  return Array.from(document.querySelectorAll('.filtro-vendedor-select')).map(s => s.value).filter(v => v);
+}
+
+function textoFiltro() {
+  const v = vendedoresSelecionados();
+  return v.length ? 'Vendedor(es): ' + Array.from(new Set(v)).join(', ') : '';
+}
+
+function linhasFiltradasComIndice(ignorarFiltro) {
+  const sel = ignorarFiltro ? [] : vendedoresSelecionados();
+  return linhas.map((l, i) => ({ l, i })).filter(it => sel.length === 0 || sel.includes(it.l.nome));
+}
+
+// ======================================================================
+// CÁLCULO
+// ======================================================================
+function calcularLinha(l) {
+  const valorUnitario = l.qtd ? l.valorTotal / l.qtd : 0;
+  const custoTotal = l.custoUnitario * l.qtd;
+  const lucroTotal = l.valorTotal - custoTotal;
+  const valorNF = l.valorTotal * (l.pctNF / 100);
+  const imposto = valorNF * (l.pctImposto / 100);
+  const frete = valorNF * (l.pctFrete / 100);
+  const comissao = valorNF * (l.pctComissao / 100);
+  const custoOperacional = valorNF * (l.pctCustoOp / 100);
+  const lucroLiquido = lucroTotal - imposto - frete - comissao - custoOperacional;
+  return { valorUnitario, custoTotal, lucroTotal, valorNF, imposto, frete, comissao, custoOperacional, lucroLiquido };
+}
+
+function somasVazias() {
+  return { valorTotal: 0, custoTotal: 0, valorNF: 0, imposto: 0, frete: 0, comissao: 0, custoOperacional: 0, lucroLiquido: 0 };
+}
+
+function somarEm(somas, l) {
+  const c = calcularLinha(l);
+  somas.valorTotal += l.valorTotal;
+  somas.custoTotal += c.custoTotal;
+  somas.valorNF += c.valorNF;
+  somas.imposto += c.imposto;
+  somas.frete += c.frete;
+  somas.comissao += c.comissao;
+  somas.custoOperacional += c.custoOperacional;
+  somas.lucroLiquido += c.lucroLiquido;
+}
+
+const SEM_RECEBEDOR = '(sem recebedor)';
+
+// ---- A DEVOLVER: parte do valor faturado repassada por fora (imposto, frete, comissão, custo operacional e/ou metade do lucro) ----
+const DEV_ITENS = [['imposto', 'Imposto'], ['frete', 'Frete'], ['comissao', 'Comissão'], ['custoOp', 'Custo operacional'], ['custo', 'Custo da mercadoria'], ['lucro', 'Lucro (÷ 2)']];
+const DEV_ROTULO = { imposto: 'Imposto', frete: 'Frete', comissao: 'Comissão', custoOp: 'Custo operacional', custo: 'Custo da mercadoria', lucro: 'Lucro' };
+
+function devComponentes(g) {
+  const s = g.soma;
+  return { imposto: s.imposto, frete: s.frete, comissao: s.comissao, custoOp: s.custoOperacional, custo: s.custoTotal, lucro: Math.max(0, s.lucroLiquido) / 2 };
+}
+function devSelecionados(g) {
+  const d = getParc(g.key).dev || {}, c = devComponentes(g), o = {};
+  DEV_ITENS.forEach(([k]) => { o[k] = d[k] ? c[k] : 0; });
+  return o;
+}
+function valorDevolver(g) { return Object.values(devSelecionados(g)).reduce((a, b) => a + b, 0); }
+function textoDevolver(key) {
+  const d = getParc(key).dev || {};
+  return DEV_ITENS.filter(([k]) => d[k]).map(([k]) => DEV_ROTULO[k]).join(', ');
+}
+// O valor a devolver é descontado a partir da 1ª parcela (e passa para as seguintes se não couber)
+function parcelasLiquidas(g) {
+  const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+  let resta = valorDevolver(g);
+  return vals.map(v => {
+    const d = Math.round(Math.min(Math.max(v, 0), resta) * 100) / 100;
+    resta = Math.round((resta - d) * 100) / 100;
+    return { bruto: v, desconto: d, liquido: Math.round((v - d) * 100) / 100 };
+  });
+}
+function totaisDevolucao(g) {
+  const pl = parcelasLiquidas(g), its = getParc(g.key).itens;
+  let pago = 0, aberto = 0, repassar = 0, descontado = 0;
+  pl.forEach((x, i) => {
+    descontado += x.desconto;
+    if (its[i] && its[i].pago) { pago += x.bruto; repassar += x.liquido; } else aberto += x.bruto;
+  });
+  return { devolver: valorDevolver(g), pago, aberto, repassar, descontado };
+}
+
+// Por pedido: quanto de cada recebedor (itens, valores, e pago/devolver/repassar/aberto rateados pela base das parcelas). Mais o total por recebedor.
+function resumoRecebedores() {
+  const grupos = agruparPorPedido();
+  const porPedido = [], totais = new Map();
+  const ordenar = (a, b) => (a.rec === SEM_RECEBEDOR) - (b.rec === SEM_RECEBEDOR) || a.rec.localeCompare(b.rec, 'pt-BR');
+  const campos = ['pago', 'devolver', 'repassar', 'aberto'];
+  grupos.forEach(g => {
+    const b = getParc(g.key).base, baseTotal = totalBaseParcelas(g), td = totaisDevolucao(g);
+    const mapa = new Map();
+    g.linhas.forEach(l => {
+      const nome = String(l.recebedor || '').trim(), k = nome.toLowerCase();
+      if (!mapa.has(k)) mapa.set(k, { rec: nome || SEM_RECEBEDOR, itens: 0, soma: somasVazias(), base: 0 });
+      const m = mapa.get(k), c = calcularLinha(l);
+      m.itens++; somarEm(m.soma, l);
+      m.base += (b.faturado ? l.valorTotal : 0) + (b.custo ? c.custoTotal : 0);
+    });
+    const rows = Array.from(mapa.values()).map(m => {
+      const part = baseTotal ? m.base / baseTotal : 1 / mapa.size;
+      const r = { rec: m.rec, itens: m.itens, soma: m.soma };
+      campos.forEach(f => { r[f] = td[f] * part; });
+      return r;
+    }).sort(ordenar);
+    porPedido.push({ g, rows });
+    rows.forEach(r => {
+      const k = r.rec.toLowerCase();
+      if (!totais.has(k)) { const t = { rec: r.rec, itens: 0, soma: somasVazias() }; campos.forEach(f => { t[f] = 0; }); totais.set(k, t); }
+      const t = totais.get(k);
+      t.itens += r.itens; campos.forEach(f => { t[f] += r[f]; });
+      Object.keys(t.soma).forEach(f => { t.soma[f] += r.soma[f]; });
+    });
+  });
+  return { porPedido, totais: Array.from(totais.values()).sort(ordenar) };
+}
+
+function renderizarResumoRecebedores() {
+  const cont = document.getElementById('resumoRecebedores');
+  if (!cont) return;
+  const { porPedido, totais } = resumoRecebedores();
+  if (!porPedido.length) { cont.innerHTML = ''; return; }
+  const linha = (r, ped) => `<tr>${ped}<td>${esc(r.rec)}</td><td style="text-align:center">${r.itens}</td>
+    <td>${fmt(r.soma.valorTotal)}</td><td>${fmt(r.soma.custoTotal)}</td><td>${fmt(r.soma.valorNF)}</td>
+    <td class="${r.soma.lucroLiquido >= 0 ? 'lucro-pos' : 'lucro-neg'}">${fmt(r.soma.lucroLiquido)}</td>
+    <td>${fmt(r.pago)}</td><td>${fmt(r.devolver)}</td><td><b>${fmt(r.repassar)}</b></td><td>${fmt(r.aberto)}</td></tr>`;
+  const cab = pedCols => `<tr>${pedCols}<th>Recebedor</th><th>Itens</th><th>Valor faturado</th><th>Custo da mercadoria</th><th>Valor NF</th><th>Lucro líquido</th><th>Recebido (pago)</th><th>A devolver</th><th>A repassar</th><th>A receber (em aberto)</th></tr>`;
+  let corpo = '';
+  porPedido.forEach(({ g, rows }) => {
+    rows.forEach((r, i) => {
+      corpo += linha(r, i === 0 ? `<td rowspan="${rows.length}"><b>${esc(g.key)}</b><div class="hint">${esc(g.contato)}</div></td>` : '');
+    });
+  });
+  cont.innerHTML = `
+    <div class="table-wrap" style="max-height:none"><table class="lista-fech">
+      <thead>${cab('<th>Pedido</th>')}</thead><tbody>${corpo}</tbody></table></div>
+    <h3 style="margin-top:16px">Total por recebedor</h3>
+    <div class="table-wrap" style="max-height:none"><table class="lista-fech">
+      <thead>${cab('')}</thead><tbody>${totais.map(t => linha(t, '')).join('')}</tbody></table></div>`;
+}
+
+// Agrupa as linhas (já filtradas e ordenadas) por pedido de venda
+function agruparPorPedido(ignorarFiltro) {
+  const mapa = new Map();
+  linhasFiltradasComIndice(ignorarFiltro).forEach(({ l }) => {
+    const key = String(l.pedido || '').trim() || '(sem número)';
+    if (!mapa.has(key)) {
+      mapa.set(key, { key, contato: l.contato, vendedores: [], linhas: [], soma: somasVazias() });
+    }
+    const g = mapa.get(key);
+    g.linhas.push(l);
+    if (l.nome && !g.vendedores.includes(l.nome)) g.vendedores.push(l.nome);
+    somarEm(g.soma, l);
+  });
+  return Array.from(mapa.values());
+}
+
+// ======================================================================
+// PARCELAS
+// ======================================================================
+function getParc(key) {
+  if (!parcelasPorPedido[key]) {
+    parcelasPorPedido[key] = { n: 1, itens: [{ data: '', valor: null, pago: false }], base: { faturado: true, custo: false }, nfe: '', dev: { imposto: false, frete: false, comissao: false, custoOp: false, custo: false, lucro: false } };
+  }
+  return parcelasPorPedido[key];
+}
+
+// Base de cálculo das parcelas: valor faturado, custo da mercadoria, ou a soma dos dois
+function totalBaseParcelas(g) {
+  const b = getParc(g.key).base;
+  return (b.faturado ? g.soma.valorTotal : 0) + (b.custo ? g.soma.custoTotal : 0);
+}
+
+function rotuloBase(key) {
+  const b = getParc(key).base;
+  if (b.faturado && b.custo) return 'Valor faturado + Custo da mercadoria';
+  return b.custo ? 'Custo da mercadoria' : 'Valor faturado';
+}
+
+// Valores efetivos: o que o usuário editou, ou divisão igual (a última parcela leva o centavo de diferença)
+function valoresParcelas(key, total) {
+  const p = getParc(key);
+  const n = p.n;
+  const base = Math.floor((total / n) * 100) / 100;
+  const ultimo = Math.round((total - base * (n - 1)) * 100) / 100;
+  return p.itens.map((it, i) => it.valor !== null ? it.valor : (i === n - 1 ? ultimo : base));
+}
+
+function checkParcelas(gi) {
+  const g = gruposAtuais[gi];
+  const base = totalBaseParcelas(g);
+  const soma = valoresParcelas(g.key, base).reduce((a, b) => a + b, 0);
+  const dif = Math.round((soma - base) * 100) / 100;
+  if (Math.abs(dif) < 0.005) return { ok: true, txt: 'Soma das parcelas confere com a base de cálculo (' + rotuloBase(g.key) + ': ' + fmt(base) + ').' };
+  return { ok: false, txt: 'Soma das parcelas: ' + fmt(soma) + ' — diferença de ' + fmt(dif) + ' em relação à base (' + rotuloBase(g.key) + ': ' + fmt(base) + ').' };
+}
+
+// Marca/desmarca uma base (faturado e/ou custo) num pedido; sempre fica pelo menos uma marcada
+function setParcelaBase(gi, qual, marcado) {
+  const p = getParc(gruposAtuais[gi].key);
+  p.base[qual] = marcado;
+  if (!p.base.faturado && !p.base.custo) p.base[qual] = true;
+  p.itens.forEach(it => { it.valor = null; });   // valores editados deixam de valer com outra base
+  renderizarResumoPedidos();
+}
+
+function aplicarBaseATodos() {
+  let fat = document.getElementById('baseGlobalFaturado').checked;
+  const cus = document.getElementById('baseGlobalCusto').checked;
+  if (!fat && !cus) { fat = true; document.getElementById('baseGlobalFaturado').checked = true; }
+  gruposAtuais.forEach(g => {
+    const p = getParc(g.key);
+    p.base = { faturado: fat, custo: cus };
+    p.itens.forEach(it => { it.valor = null; });
+  });
+  renderizarResumoPedidos();
+}
+
+// Totais pagos e em aberto de um pedido (considera os valores efetivos das parcelas)
+function totaisPagamento(g) {
+  const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+  let pago = 0, aberto = 0;
+  getParc(g.key).itens.forEach((it, i) => { if (it.pago) pago += vals[i]; else aberto += vals[i]; });
+  return { pago, aberto };
+}
+
+function textoPagamento(g) {
+  const t = totaisPagamento(g), d = totaisDevolucao(g);
+  let txt = 'Pago: ' + fmt(t.pago) + '  ·  Em aberto: ' + fmt(t.aberto);
+  if (d.devolver > 0.004) txt += '  ·  A devolver: ' + fmt(d.devolver) + '  ·  A repassar (pago, já descontada a devolução): ' + fmt(d.repassar);
+  return txt;
+}
+function textoLiquido(x) {
+  if (x.desconto <= 0.004) return '';
+  return '− ' + fmt(x.desconto) + ' a devolver = ' + fmt(x.liquido) + (x.liquido <= 0.004 ? ' (parcela toda descontada; o restante segue para a próxima)' : '');
+}
+function setDev(gi, campo, marcado) {
+  getParc(gruposAtuais[gi].key).dev[campo] = marcado;
+  renderizarResumoPedidos();
+}
+
+function atualizarCheckParcelas(gi) {
+  const el = document.getElementById('check-' + gi);
+  if (!el) return;
+  const c = checkParcelas(gi);
+  el.textContent = c.txt;
+  el.className = 'check-parcelas ' + (c.ok ? 'ok' : 'warn');
+  const info = document.getElementById('pagoinfo-' + gi);
+  if (info) info.textContent = textoPagamento(gruposAtuais[gi]);
+  parcelasLiquidas(gruposAtuais[gi]).forEach((x, i) => {
+    const e = document.getElementById('liq-' + gi + '-' + i);
+    if (e) e.textContent = textoLiquido(x);
+  });
+  renderizarResumoRecebedores();
+}
+
+// Alterna a parcela entre "Aberto" e "Pago" (atualiza só o botão, sem redesenhar a tela)
+function togglePago(gi, i) {
+  const it = getParc(gruposAtuais[gi].key).itens[i];
+  it.pago = !it.pago;
+  const btn = document.getElementById('pago-' + gi + '-' + i);
+  if (btn) {
+    btn.className = 'btn-status ' + (it.pago ? 'pago' : 'aberto');
+    btn.textContent = it.pago ? 'Pago' : 'Aberto';
+  }
+  atualizarCheckParcelas(gi);
+}
+
+function setParcelasN(gi, valor) {
+  const g = gruposAtuais[gi];
+  let n = parseInt(valor, 10);
+  if (isNaN(n) || n < 1) n = 1;
+  if (n > 60) n = 60;
+  const p = getParc(g.key);
+  const itens = [];
+  for (let i = 0; i < n; i++) {
+    itens.push({ data: p.itens[i] ? p.itens[i].data : '', valor: null, pago: p.itens[i] ? p.itens[i].pago : false });
+  }
+  p.n = n;
+  p.itens = itens;
+  renderizarResumoPedidos();
+}
+
+function setNfe(gi, v) { getParc(gruposAtuais[gi].key).nfe = String(v || '').trim(); }
+
+function setParcelaData(gi, i, v) { getParc(gruposAtuais[gi].key).itens[i].data = v; }
+
+function setParcelaValor(gi, i, v) {
+  getParc(gruposAtuais[gi].key).itens[i].valor = (v === '' ? null : Number(v));
+  atualizarCheckParcelas(gi);
+}
+
+// ======================================================================
+// RENDERIZAÇÃO
+// ======================================================================
+function renderizarTabela() {
+  const tbody = document.getElementById('tabelaBody');
+  tbody.innerHTML = '';
+  linhasFiltradasComIndice().forEach(({ l, i }) => {
+    const c = calcularLinha(l);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${esc(l.pedido)}</td>
+      <td>${esc(l.nome)}</td>
+      <td>${esc(l.contato)}</td>
+      <td><input type="text" value="${esc(l.recebedor)}" onchange="atualizarTexto(${i},'recebedor',this.value)" style="width:90px"></td>
+      <td>${esc(l.descricao)}</td>
+      <td>${l.qtd}</td>
+      <td>${fmt(l.valorTotal)}</td>
+      <td>${fmt(c.valorUnitario)}</td>
+      <td><input type="number" step="0.01" value="${l.custoUnitario.toFixed(2)}" onchange="atualizar(${i},'custoUnitario',this.value)"></td>
+      <td class="custo-total-cell"></td>
+      <td class="lucro-total-cell"></td>
+      <td><input type="number" step="0.1" value="${l.pctNF}" onchange="atualizar(${i},'pctNF',this.value)"></td>
+      <td class="valor-nf-cell"></td>
+      <td><input type="number" step="0.01" value="${l.pctImposto}" onchange="atualizar(${i},'pctImposto',this.value)"></td>
+      <td class="imposto-cell"></td>
+      <td><input type="number" step="0.01" value="${l.pctFrete}" onchange="atualizar(${i},'pctFrete',this.value)"></td>
+      <td class="frete-cell"></td>
+      <td><input type="number" step="0.01" value="${l.pctComissao}" onchange="atualizar(${i},'pctComissao',this.value)"></td>
+      <td class="comissao-cell"></td>
+      <td><input type="number" step="0.01" value="${l.pctCustoOp}" onchange="atualizar(${i},'pctCustoOp',this.value)"></td>
+      <td class="custoop-cell"></td>
+      <td class="lucro-cell"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  atualizarLucros();
+}
+
+function atualizar(i, campo, valor) {
+  linhas[i][campo] = Number(valor) || 0;
+  atualizarLucros();
+}
+
+function atualizarTexto(i, campo, valor) { linhas[i][campo] = valor; renderizarResumoRecebedores(); }
+
+function atualizarLucros() {
+  const somas = somasVazias();
+  const trs = document.querySelectorAll('#tabelaBody tr');
+  linhasFiltradasComIndice().forEach(({ l }, i) => {
+    const c = calcularLinha(l);
+    somarEm(somas, l);
+    const tr = trs[i];
+    if (!tr) return;
+    tr.querySelector('.custo-total-cell').textContent = fmt(c.custoTotal);
+    tr.querySelector('.lucro-total-cell').textContent = fmt(c.lucroTotal);
+    tr.querySelector('.valor-nf-cell').textContent = fmt(c.valorNF);
+    tr.querySelector('.imposto-cell').textContent = fmt(c.imposto);
+    tr.querySelector('.frete-cell').textContent = fmt(c.frete);
+    tr.querySelector('.comissao-cell').textContent = fmt(c.comissao);
+    tr.querySelector('.custoop-cell').textContent = fmt(c.custoOperacional);
+    const cel = tr.querySelector('.lucro-cell');
+    cel.textContent = fmt(c.lucroLiquido);
+    cel.className = 'lucro-cell ' + (c.lucroLiquido >= 0 ? 'lucro-pos' : 'lucro-neg');
+  });
+
+  document.getElementById('rValorTotal').textContent = fmt(somas.valorTotal);
+  document.getElementById('rCustoTotal').textContent = fmt(somas.custoTotal);
+  document.getElementById('rValorNF').textContent = fmt(somas.valorNF);
+  document.getElementById('rImposto').textContent = fmt(somas.imposto);
+  document.getElementById('rFrete').textContent = fmt(somas.frete);
+  document.getElementById('rComissao').textContent = fmt(somas.comissao);
+  document.getElementById('rCustoOp').textContent = fmt(somas.custoOperacional);
+  const totalEl = document.getElementById('lucroTotal');
+  totalEl.textContent = fmt(somas.lucroLiquido);
+  totalEl.className = somas.lucroLiquido >= 0 ? 'lucro-pos' : 'lucro-neg';
+
+  renderizarResumoPedidos();
+}
+
+function renderizarResumoPedidos() {
+  const cont = document.getElementById('resumoPedidos');
+  gruposAtuais = agruparPorPedido();
+  if (!gruposAtuais.length) {
+    cont.innerHTML = '<p class="hint">Nenhum pedido para mostrar.</p>';
+    renderizarResumoRecebedores();
+    return;
+  }
+  cont.innerHTML = gruposAtuais.map((g, gi) => {
+    const p = getParc(g.key);
+    const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+    const s = g.soma;
+    const chk = checkParcelas(gi);
+    const liq = parcelasLiquidas(g);
+    const linhasParc = p.itens.map((it, i) => `
+      <div class="parcela-row">
+        <span>Parcela ${i + 1}/${p.n}</span>
+        <input type="date" value="${esc(it.data)}" onchange="setParcelaData(${gi},${i},this.value)" title="Data de pagamento">
+        <input type="number" step="0.01" value="${vals[i].toFixed(2)}" onchange="setParcelaValor(${gi},${i},this.value)" title="Valor da parcela (R$)">
+        <button type="button" id="pago-${gi}-${i}" class="btn-status ${it.pago ? 'pago' : 'aberto'}" onclick="togglePago(${gi},${i})" title="Clique para alternar entre Aberto e Pago">${it.pago ? 'Pago' : 'Aberto'}</button>
+        <span class="liq" id="liq-${gi}-${i}">${textoLiquido(liq[i])}</span>
+      </div>`).join('');
+    const comp = devComponentes(g), devTot = valorDevolver(g);
+    const recs = Array.from(new Set(g.linhas.map(l => String(l.recebedor || '').trim()).filter(Boolean)));
+    const devBox = `
+      <div class="dev-box">
+        <div class="parcelas-top">
+          <b>A devolver</b><span class="base-label" style="margin-left:0">(repassado por fora, sai do valor faturado):</span>
+          ${DEV_ITENS.map(([k, rot]) => `<label class="chk"><input type="checkbox" ${p.dev[k] ? 'checked' : ''} onchange="setDev(${gi},'${k}',this.checked)"> ${rot} <span class="hint">${fmt(comp[k])}</span></label>`).join('')}
+          <span class="base-valor">= ${fmt(devTot)}</span>
+        </div>
+        <div class="pago-info">${devTot > 0.004 ? 'Esse valor é descontado a partir da 1ª parcela: se for maior que ela, a parcela inteira é descontada e o que faltar sai da parcela seguinte, e assim por diante.' + (devTot - liq.reduce((a, x) => a + x.desconto, 0) > 0.01 ? ' <b style="color:var(--amber)">Atenção: falta descontar ' + fmt(devTot - liq.reduce((a, x) => a + x.desconto, 0)) + ', o valor a devolver é maior que a soma das parcelas.</b>' : '') : 'Marque o que será devolvido; o lucro entra dividido por 2.'}</div>
+      </div>`;
+    const totais = [
+      ['Valor faturado', fmt(s.valorTotal)], ['Custo da mercadoria', fmt(s.custoTotal)],
+      ['Valor NF', fmt(s.valorNF)], ['Impostos', fmt(s.imposto)], ['Frete', fmt(s.frete)],
+      ['Comissão', fmt(s.comissao)], ['Custo operacional', fmt(s.custoOperacional)]
+    ].map(t => `<div class="t"><div class="l">${t[0]}</div><div class="v">${t[1]}</div></div>`).join('');
+    return `
+    <div class="pedido-card">
+      <div class="pedido-head">
+        <div class="titulo">Pedido ${esc(g.key)}<span class="sub">${esc(g.contato)} · ${esc(g.vendedores.join(', '))} · ${g.linhas.length} item(ns)${recs.length ? ' · Recebedor: <b>' + esc(recs.join(', ')) + '</b>' : ''}</span></div>
+        <div>Lucro líquido: <span class="${s.lucroLiquido >= 0 ? 'lucro-pos' : 'lucro-neg'}">${fmt(s.lucroLiquido)}</span></div>
+      </div>
+      <div class="nfe-row"><label>Nº da NFe</label><input type="text" value="${esc(p.nfe || '')}" placeholder="Opcional" onchange="setNfe(${gi},this.value)"></div>
+      <div class="pedido-totais">${totais}</div>
+      ${devBox}
+      <div class="parcelas-box">
+        <div class="parcelas-top">
+          <label>Nº de parcelas</label>
+          <input type="number" min="1" max="60" step="1" value="${p.n}" onchange="setParcelasN(${gi},this.value)">
+          <span class="base-label">Base do cálculo:</span>
+          <label class="chk"><input type="checkbox" ${p.base.faturado ? 'checked' : ''} onchange="setParcelaBase(${gi},'faturado',this.checked)"> Valor faturado</label>
+          <label class="chk"><input type="checkbox" ${p.base.custo ? 'checked' : ''} onchange="setParcelaBase(${gi},'custo',this.checked)"> Custo da mercadoria</label>
+          <span class="base-valor">= ${fmt(totalBaseParcelas(g))}</span>
+        </div>
+        ${linhasParc}
+        <div class="check-parcelas ${chk.ok ? 'ok' : 'warn'}" id="check-${gi}">${chk.txt}</div>
+        <div class="pago-info" id="pagoinfo-${gi}">${textoPagamento(g)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  renderizarResumoRecebedores();
+}
+
+function toggleCustoOp() {
+  const ativo = document.getElementById('bulkCustoOpAtivo').checked;
+  document.getElementById('bulkCustoOp').disabled = !ativo;
+  if (!ativo) document.getElementById('bulkCustoOp').value = 0;
+}
+
+function aplicarEmMassa() {
+  const pctNF = Number(document.getElementById('bulkNF').value || 0);
+  const pctImposto = Number(document.getElementById('bulkImposto').value || 0);
+  const pctFrete = Number(document.getElementById('bulkFrete').value || 0);
+  const pctComissao = Number(document.getElementById('bulkComissao').value || 0);
+  const custoOpAtivo = document.getElementById('bulkCustoOpAtivo').checked;
+  const pctCustoOp = custoOpAtivo ? Number(document.getElementById('bulkCustoOp').value || 0) : 0;
+  const recebedor = document.getElementById('bulkRecebedor').value;
+  linhasFiltradasComIndice().forEach(({ l }) => {
+    l.pctNF = pctNF;
+    l.pctImposto = pctImposto;
+    l.pctFrete = pctFrete;
+    l.pctComissao = pctComissao;
+    l.pctCustoOp = pctCustoOp;
+    if (recebedor) l.recebedor = recebedor;
+  });
+  renderizarTabela();
+}
+
+// ======================================================================
+// EXPORTAR EXCEL (com fórmulas)
+// ======================================================================
+const Z_MOEDA = '"R$" #,##0.00';
+const Z_PCT = '0.00"%"';
+
+function pedidoCel(p) {
+  const s = String(p || '').trim();
+  if (!s) return '(sem número)';
+  return /^\d+$/.test(s) ? Number(s) : s;
+}
+
+// Monta a planilha célula a célula (permite fórmula + valor em cache + formato)
+function criarPlanilha(rowsCel, larguras, mescla) {
+  const ws = {};
+  let maxR = 0, maxC = 0;
+  rowsCel.forEach((linha, r) => {
+    linha.forEach((cel, c) => {
+      if (cel === null || cel === undefined || cel === '') return;
+      const d = (typeof cel === 'object') ? Object.assign({}, cel) : { v: cel };
+      if (!d.t) d.t = (typeof d.v === 'number') ? 'n' : 's';
+      ws[XLSX.utils.encode_cell({ r, c })] = d;
+      if (r > maxR) maxR = r;
+      if (c > maxC) maxC = c;
+    });
+  });
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+  if (larguras) ws['!cols'] = larguras.map(w => ({ wch: w }));
+  if (mescla) ws['!merges'] = mescla;
+  return ws;
+}
+
+function exportarExcel() {
+  const status = document.getElementById('statusExport');
+  try {
+    const nomeRelatorio = document.getElementById('nomeRelatorio').value.trim() || 'Relatório de Venda';
+    const itens = linhasFiltradasComIndice();
+    if (!itens.length) throw new Error('Não há linhas para exportar.');
+    const grupos = agruparPorPedido();
+    const filtro = textoFiltro();
+    const info = 'Gerado em ' + new Date().toLocaleDateString('pt-BR') + textoFechamento() + (filtro ? ' · ' + filtro : '');
+    const M = (v, f) => ({ v, f, z: Z_MOEDA });
+
+    // ---------- Aba DETALHE ----------
+    const cabDet = ['Data', 'Nome', 'Nome - Contato', 'Recebedor', 'Número do pedido', 'Descrição', 'Quantidade',
+      'Valor total', 'VALOR UNITARIO', 'CUSTO UNI', 'Preço de custo', 'LUCRO TOTAL',
+      'NF %', 'VALOR NF', 'IMPOSTO %', 'IMPOSTO', 'FRETE %', 'FRETE',
+      'COMISSÃO %', 'COMISSÃO', 'CUSTO OPERACIONAL %', 'CUSTO OPERACIONAL', 'LUCRO LIQUIDO'];
+    const PRIM = 5;                       // primeira linha de dados (1-based)
+    const ULT = PRIM + itens.length - 1;  // última linha de dados
+    const rowsDet = [[nomeRelatorio + ' — Detalhe por item'], [info], [], cabDet];
+    const somasTot = somasVazias();
+    itens.forEach(({ l }, k) => {
+      const R = PRIM + k;
+      const c = calcularLinha(l);
+      somarEm(somasTot, l);
+      rowsDet.push([
+        l.data, l.nome, l.contato, String(l.recebedor || '').trim(), pedidoCel(l.pedido), l.descricao,
+        { v: l.qtd, z: '0' },
+        M(l.valorTotal),
+        M(c.valorUnitario, `IF(G${R}=0,0,H${R}/G${R})`),
+        M(l.custoUnitario),
+        M(c.custoTotal, `J${R}*G${R}`),
+        M(c.lucroTotal, `H${R}-K${R}`),
+        { v: l.pctNF, z: Z_PCT },
+        M(c.valorNF, `H${R}*M${R}/100`),
+        { v: l.pctImposto, z: Z_PCT },
+        M(c.imposto, `N${R}*O${R}/100`),
+        { v: l.pctFrete, z: Z_PCT },
+        M(c.frete, `N${R}*Q${R}/100`),
+        { v: l.pctComissao, z: Z_PCT },
+        M(c.comissao, `N${R}*S${R}/100`),
+        { v: l.pctCustoOp, z: Z_PCT },
+        M(c.custoOperacional, `N${R}*U${R}/100`),
+        M(c.lucroLiquido, `L${R}-P${R}-R${R}-T${R}-V${R}`)
+      ]);
+    });
+    const soma = (col, v) => M(v, `SUM(${col}${PRIM}:${col}${ULT})`);
+    const totalDet = new Array(23).fill(null);
+    totalDet[0] = 'TOTAL';
+    totalDet[7] = soma('H', somasTot.valorTotal);
+    totalDet[10] = soma('K', somasTot.custoTotal);
+    totalDet[11] = soma('L', somasTot.valorTotal - somasTot.custoTotal);
+    totalDet[13] = soma('N', somasTot.valorNF);
+    totalDet[15] = soma('P', somasTot.imposto);
+    totalDet[17] = soma('R', somasTot.frete);
+    totalDet[19] = soma('T', somasTot.comissao);
+    totalDet[21] = soma('V', somasTot.custoOperacional);
+    totalDet[22] = soma('W', somasTot.lucroLiquido);
+    rowsDet.push(totalDet);
+    const wsDet = criarPlanilha(rowsDet,
+      [11, 10, 34, 12, 12, 38, 10, 14, 14, 12, 14, 14, 9, 14, 10, 13, 9, 13, 11, 13, 12, 14, 15],
+      [{ s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }]);
+
+    // ---------- Aba RESUMO POR PEDIDO ----------
+    const cabRes = ['Pedido', 'Nº NFe', 'Cliente', 'Vendedor', 'Valor Faturado', 'Custo Total', 'Valor NF',
+      'Impostos', 'Frete', 'Comissão', 'Custo Operacional', 'Lucro Líquido', 'Nº de Parcelas'];
+    const colDet = { 4: 'H', 5: 'K', 6: 'N', 7: 'P', 8: 'R', 9: 'T', 10: 'V', 11: 'W' }; // coluna do resumo -> coluna do detalhe
+    const chaveSoma = { 4: 'valorTotal', 5: 'custoTotal', 6: 'valorNF', 7: 'imposto', 8: 'frete', 9: 'comissao', 10: 'custoOperacional', 11: 'lucroLiquido' };
+    const rowsRes = [[nomeRelatorio + ' — Resumo por pedido'], [info], [], cabRes];
+    const RPRIM = 5, RULT = RPRIM + grupos.length - 1;
+    grupos.forEach((g, k) => {
+      const R = RPRIM + k;
+      const linhaRes = [pedidoCel(g.key), getParc(g.key).nfe || '', g.contato, g.vendedores.join(', ')];
+      for (let c = 4; c <= 11; c++) {
+        const dc = colDet[c];
+        linhaRes.push(M(g.soma[chaveSoma[c]], `SUMIF(Detalhe!$E$${PRIM}:$E$${ULT},$A${R},Detalhe!$${dc}$${PRIM}:$${dc}$${ULT})`));
+      }
+      linhaRes.push({ v: getParc(g.key).n, z: '0' });
+      rowsRes.push(linhaRes);
+    });
+    const totalRes = ['TOTAL', null, null, null];
+    const letras = 'ABCDEFGHIJKLM';
+    for (let c = 4; c <= 11; c++) {
+      const L = letras[c];
+      totalRes.push(M(somasTot[chaveSoma[c]], `SUM(${L}${RPRIM}:${L}${RULT})`));
+    }
+    rowsRes.push(totalRes);
+    const wsRes = criarPlanilha(rowsRes, [12, 14, 44, 14, 16, 14, 14, 13, 13, 13, 16, 16, 14],
+      [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]);
+
+    // ---------- Aba PARCELAS ----------
+    const rowsPar = [[nomeRelatorio + ' — Parcelas e datas de pagamento'], [info], [],
+      ['Pedido', 'Cliente', 'Parcela', 'Data de pagamento', 'Valor da parcela', 'Situação', 'Base de cálculo', 'A devolver descontado', 'Valor líquido']];
+    let totPago = 0, totAberto = 0;
+    grupos.forEach(g => {
+      const p = getParc(g.key);
+      const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+      const pliq = parcelasLiquidas(g);
+      p.itens.forEach((it, i) => {
+        const serial = dataSerialExcel(it.data);
+        if (it.pago) totPago += vals[i]; else totAberto += vals[i];
+        const Rr = rowsPar.length + 1;
+        rowsPar.push([
+          pedidoCel(g.key), g.contato, (i + 1) + '/' + p.n,
+          serial === null ? 'A definir' : { v: serial, t: 'n', z: 'dd/mm/yyyy' },
+          { v: vals[i], z: Z_MOEDA },
+          it.pago ? 'Pago' : 'Aberto',
+          rotuloBase(g.key),
+          M(pliq[i].desconto), M(pliq[i].liquido, `E${Rr}-H${Rr}`)
+        ]);
+      });
+    });
+    const PP = 5, PU = rowsPar.length;   // primeira e última linha de parcelas (1-based)
+    rowsPar.push([]);
+    rowsPar.push(['Total pago', null, null, null, M(totPago, `SUMIF($F$${PP}:$F$${PU},"Pago",$E$${PP}:$E$${PU})`)]);
+    rowsPar.push(['Total em aberto', null, null, null, M(totAberto, `SUMIF($F$${PP}:$F$${PU},"Aberto",$E$${PP}:$E$${PU})`)]);
+    const wsPar = criarPlanilha(rowsPar, [14, 44, 10, 18, 18, 12, 36, 22, 18], [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }]);
+
+    // ---------- Aba A DEVOLVER ----------
+    const D = (col) => `Detalhe!$${col}$${PRIM}:$${col}$${ULT}`;
+    const PA = (col) => `Parcelas!$${col}$${PP}:$${col}$${PU}`;
+    const cabDev = ['Pedido', 'Cliente', 'Recebedor(es)', 'Valor Faturado', 'Imposto', 'Frete', 'Comissão', 'Custo Operacional',
+      'Custo da Mercadoria', 'Lucro Líquido ÷ 2', 'Itens a devolver', 'Recebido (pago)', 'A devolver', 'A repassar'];
+    const rowsDev = [[nomeRelatorio + ' — A devolver e repasse por pedido'],
+      [info + ' · O valor a devolver é descontado a partir da 1ª parcela; A repassar = parcelas pagas já com a devolução descontada'], [], cabDev];
+    const DV1 = 5;
+    grupos.forEach((g, k) => {
+      const R = DV1 + k, sel = devSelecionados(g), dsel = getParc(g.key).dev || {}, td = totaisDevolucao(g);
+      const soma = col => `SUMIFS(${D(col)},${D('E')},$A${R})`;
+      const recs = Array.from(new Set(g.linhas.map(l => String(l.recebedor || '').trim()).filter(Boolean))).join(', ');
+      rowsDev.push([pedidoCel(g.key), g.contato, recs || SEM_RECEBEDOR, M(g.soma.valorTotal, soma('H')),
+        M(sel.imposto, dsel.imposto ? soma('P') : undefined), M(sel.frete, dsel.frete ? soma('R') : undefined),
+        M(sel.comissao, dsel.comissao ? soma('T') : undefined), M(sel.custoOp, dsel.custoOp ? soma('V') : undefined),
+        M(sel.custo, dsel.custo ? soma('K') : undefined),
+        M(sel.lucro, dsel.lucro ? `MAX(0,${soma('W')})/2` : undefined),
+        textoDevolver(g.key) || '—',
+        M(td.pago, `SUMIFS(${PA('E')},${PA('A')},$A${R},${PA('F')},"Pago")`),
+        M(td.devolver, `SUM(E${R}:J${R})`),
+        M(td.repassar, `SUMIFS(${PA('I')},${PA('A')},$A${R},${PA('F')},"Pago")`)]);
+    });
+    const DV2 = DV1 + grupos.length - 1;
+    const sdev = (L, v) => ({ v, f: `SUM(${L}${DV1}:${L}${DV2})`, z: Z_MOEDA });
+    const tD = grupos.map(g => ({ sel: devSelecionados(g), td: totaisDevolucao(g) }));
+    rowsDev.push(['TOTAL', null, null, sdev('D', somasTot.valorTotal),
+      sdev('E', tD.reduce((a, x) => a + x.sel.imposto, 0)), sdev('F', tD.reduce((a, x) => a + x.sel.frete, 0)),
+      sdev('G', tD.reduce((a, x) => a + x.sel.comissao, 0)), sdev('H', tD.reduce((a, x) => a + x.sel.custoOp, 0)),
+      sdev('I', tD.reduce((a, x) => a + x.sel.custo, 0)), sdev('J', tD.reduce((a, x) => a + x.sel.lucro, 0)), null,
+      sdev('L', tD.reduce((a, x) => a + x.td.pago, 0)), sdev('M', tD.reduce((a, x) => a + x.td.devolver, 0)),
+      sdev('N', tD.reduce((a, x) => a + x.td.repassar, 0))]);
+    const wsDev = criarPlanilha(rowsDev, [12, 40, 24, 16, 14, 14, 14, 16, 18, 16, 28, 16, 16, 16], [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]);
+
+    // ---------- Aba RESUMO POR RECEBEDOR ----------
+    const rr = resumoRecebedores();
+    const cabRec = ['Pedido', 'Cliente', 'Recebedor', 'Itens', 'Valor Faturado', 'Custo da Mercadoria', 'Valor NF', 'Lucro Líquido',
+      'Recebido (pago)', 'A devolver', 'A repassar', 'A receber (em aberto)'];
+    const rowsRec = [[nomeRelatorio + ' — Resumo por recebedor'],
+      [info + ' · Recebido/A devolver/A repassar/A receber são do pedido, rateados pela participação do recebedor na base de cálculo das parcelas'], [], cabRec];
+    const detCol = { valorTotal: 'H', custoTotal: 'K', valorNF: 'N', lucroLiquido: 'W' };
+    rr.porPedido.forEach(({ g, rows }) => {
+      rows.forEach(r => {
+        const R = rowsRec.length + 1;
+        const sem = r.rec === SEM_RECEBEDOR;
+        const crit = `${D('E')},$A${R},${D('D')},$C${R}`;
+        const F = (campo, v) => M(v, sem ? undefined : `SUMIFS(${D(detCol[campo])},${crit})`);
+        rowsRec.push([pedidoCel(g.key), g.contato, r.rec,
+          { v: r.itens, z: '0', f: sem ? undefined : `COUNTIFS(${crit})` },
+          F('valorTotal', r.soma.valorTotal), F('custoTotal', r.soma.custoTotal), F('valorNF', r.soma.valorNF),
+          F('lucroLiquido', r.soma.lucroLiquido), M(r.pago), M(r.devolver), M(r.repassar), M(r.aberto)]);
+      });
+    });
+    const RC1 = 5, RC2 = rowsRec.length;     // intervalo da tabela por pedido (1-based)
+    rowsRec.push([]);
+    rowsRec.push(['Total por recebedor']);
+    rowsRec.push(['', '', 'Recebedor', 'Itens', 'Valor Faturado', 'Custo da Mercadoria', 'Valor NF', 'Lucro Líquido',
+      'Recebido (pago)', 'A devolver', 'A repassar', 'A receber (em aberto)']);
+    const T1 = rowsRec.length + 1;
+    rr.totais.forEach(t => {
+      const R = rowsRec.length + 1;
+      const S = (L, v) => ({ v, f: `SUMIF($C$${RC1}:$C$${RC2},$C${R},${L}$${RC1}:${L}$${RC2})`, z: L === 'D' ? '0' : Z_MOEDA });
+      rowsRec.push([null, null, t.rec, S('D', t.itens), S('E', t.soma.valorTotal), S('F', t.soma.custoTotal), S('G', t.soma.valorNF),
+        S('H', t.soma.lucroLiquido), S('I', t.pago), S('J', t.devolver), S('K', t.repassar), S('L', t.aberto)]);
+    });
+    const T2 = rowsRec.length;
+    const totG = (L, v) => ({ v, f: `SUM(${L}${T1}:${L}${T2})`, z: L === 'D' ? '0' : Z_MOEDA });
+    const somaT = f => rr.totais.reduce((a, t) => a + t[f], 0);
+    rowsRec.push([null, null, 'TOTAL', totG('D', somaT('itens')),
+      totG('E', somasTot.valorTotal), totG('F', somasTot.custoTotal), totG('G', somasTot.valorNF), totG('H', somasTot.lucroLiquido),
+      totG('I', somaT('pago')), totG('J', somaT('devolver')), totG('K', somaT('repassar')), totG('L', somaT('aberto'))]);
+    const wsRec = criarPlanilha(rowsRec, [12, 40, 24, 8, 16, 18, 14, 16, 16, 14, 16, 20], [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsRes, 'Resumo por Pedido');
+    XLSX.utils.book_append_sheet(wb, wsPar, 'Parcelas');
+    XLSX.utils.book_append_sheet(wb, wsDev, 'A Devolver');
+    XLSX.utils.book_append_sheet(wb, wsRec, 'Resumo por Recebedor');
+    XLSX.utils.book_append_sheet(wb, wsDet, 'Detalhe');
+    const nomeArquivo = nomeArquivoSeguro(nomeRelatorio) + '.xlsx';
+    XLSX.writeFile(wb, nomeArquivo);
+    status.textContent = 'Arquivo baixado: ' + nomeArquivo;
+    status.className = 'status ok';
+  } catch (err) {
+    status.textContent = 'Erro ao exportar: ' + err.message;
+    status.className = 'status err';
+  }
+}
+
+// ======================================================================
+// EXPORTAR PDF
+// ======================================================================
+function exportarPDF() {
+  const status = document.getElementById('statusExport');
+  try {
+    const nomeRelatorio = document.getElementById('nomeRelatorio').value.trim() || 'Relatório de Venda';
+    const itens = linhasFiltradasComIndice();
+    if (!itens.length) throw new Error('Não há linhas para exportar.');
+    const grupos = agruparPorPedido();
+    const filtro = textoFiltro();
+    const tot = somasVazias();
+    itens.forEach(({ l }) => somarEm(tot, l));
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const ML = 30;
+
+    // Título
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 20, 20);
+    doc.text(nomeRelatorio, ML, 34);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 120, 120);
+    doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR') + textoFechamento() + (filtro ? '  ·  ' + filtro : '') +
+      '  ·  ' + grupos.length + ' pedido(s)', ML, 48);
+
+    // Cartões de resumo geral
+    const resumo = [
+      ['Valor Faturado', fmt(tot.valorTotal)], ['Custo Total', fmt(tot.custoTotal)], ['Valor NF', fmt(tot.valorNF)],
+      ['Impostos', fmt(tot.imposto)], ['Frete', fmt(tot.frete)], ['Comissão', fmt(tot.comissao)],
+      ['Custo Operacional', fmt(tot.custoOperacional)], ['Lucro Líquido', fmt(tot.lucroLiquido)]
+    ];
+    const larguraCard = (W - 2 * ML) / resumo.length;
+    resumo.forEach((item, i) => {
+      const x = ML + i * larguraCard;
+      doc.setDrawColor(220, 220, 220);
+      doc.roundedRect(x, 62, larguraCard - 6, 34, 3, 3, 'S');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(130, 130, 130);
+      doc.text(item[0], x + 6, 74);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(20, 20, 20);
+      doc.text(item[1], x + 6, 88);
+    });
+
+    const estiloBase = { fontSize: 8, cellPadding: 3.5, font: 'helvetica', textColor: [40, 40, 40], overflow: 'linebreak' };
+    const estiloCab = { fillColor: [79, 140, 255], textColor: 255, fontSize: 8, fontStyle: 'bold', halign: 'center' };
+    const tituloSecao = (texto, y) => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 20, 20);
+      doc.text(texto, ML, y);
+    };
+    const proximoY = () => {
+      let y = doc.lastAutoTable.finalY + 26;
+      if (y > H - 100) { doc.addPage(); y = 40; }
+      return y;
+    };
+
+    // ---- Seção 1: Resumo por pedido ----
+    let y = 122;
+    tituloSecao('Resumo por pedido', y);
+    doc.autoTable({
+      startY: y + 8,
+      head: [['Pedido', 'NFe', 'Cliente', 'Vendedor', 'Valor Faturado', 'Custo Total', 'Valor NF', 'Impostos', 'Frete', 'Comissão', 'Custo Oper.', 'Lucro Líquido', 'Parcelas']],
+      body: grupos.map(g => [
+        g.key, getParc(g.key).nfe || '', g.contato, g.vendedores.join(', '),
+        fmt(g.soma.valorTotal), fmt(g.soma.custoTotal), fmt(g.soma.valorNF), fmt(g.soma.imposto),
+        fmt(g.soma.frete), fmt(g.soma.comissao), fmt(g.soma.custoOperacional), fmt(g.soma.lucroLiquido),
+        String(getParc(g.key).n)
+      ]),
+      foot: [['TOTAL', '', '', '', fmt(tot.valorTotal), fmt(tot.custoTotal), fmt(tot.valorNF), fmt(tot.imposto),
+        fmt(tot.frete), fmt(tot.comissao), fmt(tot.custoOperacional), fmt(tot.lucroLiquido), '']],
+      showFoot: 'lastPage',
+      theme: 'striped',
+      styles: estiloBase, headStyles: estiloCab,
+      footStyles: { fillColor: [235, 240, 250], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right' },
+      alternateRowStyles: { fillColor: [246, 248, 252] },
+      columnStyles: {
+        0: { cellWidth: 40, halign: 'center' }, 1: { cellWidth: 52, halign: 'center' }, 2: { cellWidth: 'auto' }, 3: { cellWidth: 50 },
+        4: { cellWidth: 62, halign: 'right' }, 5: { cellWidth: 58, halign: 'right' }, 6: { cellWidth: 58, halign: 'right' },
+        7: { cellWidth: 52, halign: 'right' }, 8: { cellWidth: 52, halign: 'right' }, 9: { cellWidth: 52, halign: 'right' },
+        10: { cellWidth: 50, halign: 'right' }, 11: { cellWidth: 62, halign: 'right', fontStyle: 'bold' },
+        12: { cellWidth: 40, halign: 'center' }
+      },
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+
+    // ---- Seção 2: Parcelas ----
+    y = proximoY();
+    tituloSecao('Parcelas e datas de pagamento', y);
+    const corposParc = [];
+    let pdfPago = 0, pdfAberto = 0;
+    grupos.forEach(g => {
+      const p = getParc(g.key);
+      const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+      const pliq = parcelasLiquidas(g);
+      p.itens.forEach((it, i) => {
+        if (it.pago) pdfPago += vals[i]; else pdfAberto += vals[i];
+        corposParc.push([g.key, g.contato, (i + 1) + '/' + p.n, it.data ? dataBR(it.data) : 'A definir',
+          fmt(vals[i]), it.pago ? 'Pago' : 'Aberto', rotuloBase(g.key),
+          pliq[i].desconto > 0.004 ? '− ' + fmt(pliq[i].desconto) : '', fmt(pliq[i].liquido)]);
+      });
+    });
+    const estiloFoot = { fillColor: [235, 240, 250], textColor: [20, 20, 20], fontStyle: 'bold' };
+    doc.autoTable({
+      startY: y + 8,
+      head: [['Pedido', 'Cliente', 'Parcela', 'Data de pagamento', 'Valor da parcela', 'Situação', 'Base de cálculo', 'A devolver', 'Valor líquido']],
+      body: corposParc,
+      foot: [
+        [{ content: 'Total pago', colSpan: 4, styles: Object.assign({ halign: 'right' }, estiloFoot) },
+         { content: fmt(pdfPago), styles: Object.assign({ halign: 'right' }, estiloFoot) },
+         { content: '', colSpan: 4, styles: estiloFoot }],
+        [{ content: 'Total em aberto', colSpan: 4, styles: Object.assign({ halign: 'right' }, estiloFoot) },
+         { content: fmt(pdfAberto), styles: Object.assign({ halign: 'right' }, estiloFoot) },
+         { content: '', colSpan: 4, styles: estiloFoot }]
+      ],
+      showFoot: 'lastPage',
+      theme: 'striped',
+      styles: estiloBase, headStyles: estiloCab,
+      alternateRowStyles: { fillColor: [246, 248, 252] },
+      columnStyles: {
+        0: { cellWidth: 50, halign: 'center' }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 50, halign: 'center' },
+        3: { cellWidth: 90, halign: 'center' }, 4: { cellWidth: 85, halign: 'right' },
+        5: { cellWidth: 55, halign: 'center' }, 6: { cellWidth: 105 },
+        7: { cellWidth: 62, halign: 'right' }, 8: { cellWidth: 70, halign: 'right', fontStyle: 'bold' }
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          const pago = data.cell.raw === 'Pago';
+          data.cell.styles.textColor = pago ? [30, 140, 70] : [190, 120, 20];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+
+    // ---- Seção: A devolver e repasse por pedido ----
+    y = proximoY();
+    tituloSecao('A devolver e repasse por pedido', y);
+    const dadosDev = grupos.map(g => ({ g, sel: devSelecionados(g), td: totaisDevolucao(g),
+      recs: Array.from(new Set(g.linhas.map(l => String(l.recebedor || '').trim()).filter(Boolean))).join(', ') || SEM_RECEBEDOR }));
+    const somaDev = f => dadosDev.reduce((a, x) => a + f(x), 0);
+    const estiloFootDev = { fillColor: [235, 240, 250], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right' };
+    doc.autoTable({
+      startY: y + 8,
+      head: [['Pedido', 'Cliente', 'Recebedor(es)', 'Imposto', 'Frete', 'Comissão', 'Custo Oper.', 'Custo Merc.', 'Lucro ÷ 2', 'Recebido (pago)', 'A devolver', 'A repassar']],
+      body: dadosDev.map(x => [x.g.key, x.g.contato, x.recs, fmt(x.sel.imposto), fmt(x.sel.frete), fmt(x.sel.comissao), fmt(x.sel.custoOp),
+        fmt(x.sel.custo), fmt(x.sel.lucro), fmt(x.td.pago), fmt(x.td.devolver), fmt(x.td.repassar)]),
+      foot: [['TOTAL', '', '', fmt(somaDev(x => x.sel.imposto)), fmt(somaDev(x => x.sel.frete)), fmt(somaDev(x => x.sel.comissao)),
+        fmt(somaDev(x => x.sel.custoOp)), fmt(somaDev(x => x.sel.custo)), fmt(somaDev(x => x.sel.lucro)), fmt(somaDev(x => x.td.pago)),
+        fmt(somaDev(x => x.td.devolver)), fmt(somaDev(x => x.td.repassar))]],
+      showFoot: 'lastPage', theme: 'striped', styles: estiloBase, headStyles: estiloCab, footStyles: estiloFootDev,
+      alternateRowStyles: { fillColor: [246, 248, 252] },
+      columnStyles: { 0: { cellWidth: 36, halign: 'center' }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 62 },
+        3: { cellWidth: 50, halign: 'right' }, 4: { cellWidth: 46, halign: 'right' }, 5: { cellWidth: 50, halign: 'right' },
+        6: { cellWidth: 48, halign: 'right' }, 7: { cellWidth: 54, halign: 'right' }, 8: { cellWidth: 50, halign: 'right' },
+        9: { cellWidth: 60, halign: 'right' }, 10: { cellWidth: 56, halign: 'right', fontStyle: 'bold' }, 11: { cellWidth: 60, halign: 'right', fontStyle: 'bold' } },
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+
+    // ---- Seção: Resumo por recebedor ----
+    y = proximoY();
+    tituloSecao('Resumo por recebedor', y);
+    const rrp = resumoRecebedores();
+    const corpoRec = [];
+    rrp.porPedido.forEach(({ g, rows }) => rows.forEach((r, i) => corpoRec.push([
+      i === 0 ? { content: g.key + '\n' + g.contato, rowSpan: rows.length, styles: { valign: 'top', fontStyle: 'bold' } } : '',
+      r.rec, String(r.itens), fmt(r.soma.valorTotal), fmt(r.soma.custoTotal), fmt(r.soma.valorNF),
+      fmt(r.soma.lucroLiquido), fmt(r.pago), fmt(r.devolver), fmt(r.repassar), fmt(r.aberto)])));
+    const numCols = (ini) => { const o = {}; for (let c = ini; c < ini + 8; c++) o[c] = { cellWidth: 62, halign: 'right' }; return o; };
+    const colsRec = Object.assign({ 0: { cellWidth: 110 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30, halign: 'center' } }, numCols(3));
+    colsRec[9] = { cellWidth: 62, halign: 'right', fontStyle: 'bold' };
+    const cabRecPdf = [['Pedido / Cliente', 'Recebedor', 'Itens', 'Valor Faturado', 'Custo Merc.', 'Valor NF', 'Lucro Líquido', 'Recebido (pago)', 'A devolver', 'A repassar', 'A receber']];
+    doc.autoTable({
+      startY: y + 8, head: cabRecPdf, body: corpoRec, theme: 'striped',
+      styles: estiloBase, headStyles: estiloCab, columnStyles: colsRec,
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+    y = proximoY();
+    tituloSecao('Total por recebedor', y);
+    const colsTot = Object.assign({ 0: { cellWidth: 'auto' }, 1: { cellWidth: 30, halign: 'center' } }, (() => { const o = {}; for (let c = 2; c < 10; c++) o[c] = { cellWidth: 62, halign: 'right' }; o[8] = { cellWidth: 62, halign: 'right', fontStyle: 'bold' }; return o; })());
+    doc.autoTable({
+      startY: y + 8,
+      head: [['Recebedor', 'Itens', 'Valor Faturado', 'Custo Merc.', 'Valor NF', 'Lucro Líquido', 'Recebido (pago)', 'A devolver', 'A repassar', 'A receber']],
+      body: rrp.totais.map(t => [t.rec, String(t.itens), fmt(t.soma.valorTotal), fmt(t.soma.custoTotal), fmt(t.soma.valorNF),
+        fmt(t.soma.lucroLiquido), fmt(t.pago), fmt(t.devolver), fmt(t.repassar), fmt(t.aberto)]),
+      theme: 'striped', styles: estiloBase, headStyles: estiloCab, columnStyles: colsTot,
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+
+    // ---- Seção 3: Detalhe por item ----
+    y = proximoY();
+    tituloSecao('Detalhe por pedido (itens em ordem alfabética de descrição)', y);
+    // Uma faixa por pedido (pedido · cliente · vendedor) seguida dos itens do pedido
+    const NCOLS = 12;
+    const corpoDetalhe = [];
+    grupos.forEach(g => {
+      corpoDetalhe.push([{
+        content: 'Pedido ' + g.key + '  —  ' + g.contato + '  —  Vendedor: ' + g.vendedores.join(', ') +
+          '  —  ' + g.linhas.length + ' item(ns)',
+        colSpan: NCOLS,
+        styles: { fillColor: [225, 234, 252], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'left', fontSize: 8 }
+      }]);
+      g.linhas.forEach(l => {
+        const c = calcularLinha(l);
+        corpoDetalhe.push([l.descricao, l.recebedor, l.qtd, fmt(l.valorTotal), fmt(c.custoTotal), fmt(c.lucroTotal),
+          fmt(c.valorNF), fmt(c.imposto), fmt(c.frete), fmt(c.comissao), fmt(c.custoOperacional), fmt(c.lucroLiquido)]);
+      });
+    });
+    doc.autoTable({
+      startY: y + 8,
+      head: [['Descrição', 'Recebedor', 'Qtd', 'Valor Total', 'Custo Total', 'Lucro Total', 'Valor NF',
+        'Imposto', 'Frete', 'Comissão', 'Custo Oper.', 'Lucro Líquido']],
+      body: corpoDetalhe,
+      theme: 'plain',
+      styles: Object.assign({}, estiloBase, { fontSize: 7.5, cellPadding: 3, lineWidth: 0.25, lineColor: [225, 228, 235] }),
+      headStyles: estiloCab,
+      columnStyles: {
+        0: { cellWidth: 'auto' }, 1: { cellWidth: 58 }, 2: { cellWidth: 30, halign: 'center' },
+        3: { cellWidth: 56, halign: 'right' }, 4: { cellWidth: 56, halign: 'right' }, 5: { cellWidth: 56, halign: 'right' },
+        6: { cellWidth: 56, halign: 'right' }, 7: { cellWidth: 50, halign: 'right' }, 8: { cellWidth: 46, halign: 'right' },
+        9: { cellWidth: 50, halign: 'right' }, 10: { cellWidth: 48, halign: 'right' },
+        11: { cellWidth: 60, halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: ML, right: ML }, tableWidth: W - 2 * ML
+    });
+
+    // Rodapé com paginação
+    const totalPaginas = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(140, 140, 140);
+      doc.text(nomeRelatorio + '  —  Página ' + i + ' de ' + totalPaginas, W - ML, H - 14, { align: 'right' });
+    }
+
+    const nomeArquivo = nomeArquivoSeguro(nomeRelatorio) + '.pdf';
+    doc.save(nomeArquivo);
+    status.textContent = 'PDF baixado: ' + nomeArquivo;
+    status.className = 'status ok';
+  } catch (err) {
+    status.textContent = 'Erro ao gerar PDF: ' + err.message;
+    status.className = 'status err';
+  }
+}
+// ======================================================================
+// LOGIN, FECHAMENTOS E SALVAMENTO (Google Sheets via Apps Script)
+// ======================================================================
+const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbzn-CYwvQqgtTO_bHrAaqAsA306Lp8l57VY1KRyN_s1rB7VBrnlOyVrfdpul8pPaFJ0dQ/exec';   // opcional: cole aqui a URL /exec para o campo não aparecer na tela de entrada
+let sessao = { url: '', codigo: '' };
+let fechamentoAtual = null;
+let listaFechamentos = [];
+let snapshotSalvo = '';
+let sujo = false;
+let salvando = false;
+
+const el = id => document.getElementById(id);
+function lerLS(st, k) { try { return st.getItem(k) || ''; } catch (e) { return ''; } }
+function gravarLS(st, k, v) { try { st.setItem(k, v); } catch (e) {} }
+function apagarLS(st, k) { try { st.removeItem(k); } catch (e) {} }
+function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function dataHoraBR(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function dataBRparaISO(s) {
+  s = String(s || '').trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+function textoFechamento() {
+  if (!fechamentoAtual) return '';
+  return ' · Responsável: ' + fechamentoAtual.responsavel + ' · Criado em: ' + dataHoraBR(fechamentoAtual.criadoEm).slice(0, 10);
+}
+
+function mostrarTela(nome) {
+  ['Inicio', 'Trabalho'].forEach(t => { el('tela' + t).style.display = (t.toLowerCase() === nome) ? 'block' : 'none'; });
+  window.scrollTo(0, 0);
+}
+
+async function api(acao, dados) {
+  if (!sessao.url) throw new Error('Informe a URL do Apps Script.');
+  let resp;
+  try {
+    resp = await fetch(sessao.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // evita o "preflight" de CORS que o Apps Script não responde
+      body: JSON.stringify(Object.assign({ acao, codigo: sessao.codigo }, dados || {}))
+    });
+  } catch (e) { throw new Error('Não consegui falar com o Google Sheets. Confira a URL e a conexão com a internet.'); }
+  let j;
+  try { j = await resp.json(); }
+  catch (e) { throw new Error('Resposta inesperada do servidor. Confira se a URL termina em /exec e se a implantação está como "Qualquer pessoa".'); }
+  if (!j.sucesso) throw new Error(j.erro || 'Erro desconhecido.');
+  return j.dados;
+}
+
+// ---------- Início: novo fechamento + lista ----------
+async function abrirInicio() {
+  fechamentoAtual = null; sujo = false;
+  el('novoData').value = dataHoraBR(new Date().toISOString());
+  if (!el('novoResp').value) el('novoResp').value = lerLS(localStorage, 'fechamento_responsavel');
+  mostrarTela('inicio');
+  await carregarLista();
+}
+
+async function carregarLista() {
+  const st = el('statusLista');
+  st.textContent = 'Carregando...'; st.className = 'status';
+  el('listaFechamentos').innerHTML = '';
+  try {
+    listaFechamentos = await api('listarFechamentos');
+    listaFechamentos.sort((a, b) => a.criadoEm < b.criadoEm ? 1 : (a.criadoEm > b.criadoEm ? -1 : 0));
+    st.textContent = '';
+    renderizarLista();
+  } catch (e) { st.textContent = e.message; st.className = 'status err'; }
+}
+
+function renderizarLista() {
+  const q = norm(el('busca').value);
+  const itens = listaFechamentos.filter(f => !q || norm(f.nome + ' ' + f.responsavel + ' ' + f.id).includes(q));
+  const cont = el('listaFechamentos');
+  if (!itens.length) {
+    cont.innerHTML = '<p class="hint">' + (listaFechamentos.length ? 'Nenhum fechamento encontrado para essa busca.' : 'Nenhum fechamento ainda. Crie o primeiro acima.') + '</p>';
+    return;
+  }
+  cont.innerHTML = '<div class="table-wrap" style="max-height:none"><table class="lista-fech"><thead><tr>' +
+    '<th>Fechamento</th><th>Responsável</th><th>Criado em</th><th>Última atualização</th><th>Pedidos</th><th>Valor faturado</th><th></th></tr></thead><tbody>' +
+    itens.map(f => `<tr>
+      <td><b>${esc(f.nome)}</b><div class="hint">${esc(f.id)}</div></td>
+      <td>${esc(f.responsavel)}</td><td>${esc(dataHoraBR(f.criadoEm))}</td><td>${esc(dataHoraBR(f.atualizadoEm))}</td>
+      <td>${f.pedidos}</td><td>${fmt(f.valorFaturado)}</td>
+      <td style="white-space:nowrap"><button data-id="${esc(f.id)}" class="btn-abrir">Abrir</button>
+        <button data-id="${esc(f.id)}" class="perigo btn-excluir" style="margin-left:6px">Excluir</button></td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+el('listaFechamentos').addEventListener('click', ev => {
+  const b = ev.target.closest('.btn-abrir');
+  if (b) { abrirFechamento(b.dataset.id); return; }
+  const x = ev.target.closest('.btn-excluir');
+  if (x) {
+    const f = listaFechamentos.find(i => i.id === x.dataset.id);
+    excluirFechamento(x.dataset.id, f ? f.nome : '');
+  }
+});
+
+async function criarNovo() {
+  const st = el('statusNovo');
+  const nome = el('novoNome').value.trim(), resp = el('novoResp').value.trim();
+  if (!nome || !resp) { st.textContent = 'Preencha o nome do fechamento e o responsável.'; st.className = 'status err'; return; }
+  el('btnCriar').disabled = true; st.textContent = 'Criando...'; st.className = 'status';
+  try {
+    const meta = await api('criarFechamento', { nome, responsavel: resp });
+    gravarLS(localStorage, 'fechamento_responsavel', resp);
+    el('novoNome').value = ''; st.textContent = '';
+    carregarDados({ meta, itens: [], pedidos: [], parcelas: [] });
+  } catch (e) { st.textContent = e.message; st.className = 'status err'; }
+  finally { el('btnCriar').disabled = false; }
+}
+
+async function abrirFechamento(id) {
+  const st = el('statusLista');
+  st.textContent = 'Abrindo fechamento...'; st.className = 'status';
+  try { carregarDados(await api('obterFechamento', { id })); st.textContent = ''; }
+  catch (e) { st.textContent = e.message; st.className = 'status err'; }
+}
+
+// ---------- Planilha -> memória ----------
+function carregarDados(d) {
+  fechamentoAtual = d.meta;
+  const n = v => Number(v) || 0;
+  linhas = d.itens.map(r => ({
+    pedido: String(r[0]), data: String(r[1]), nome: String(r[2]), contato: String(r[3]),
+    recebedor: String(r[4]), descricao: String(r[5]),
+    qtd: Math.round(n(r[6])), valorTotal: n(r[7]), custoUnitario: n(r[8]),
+    pctNF: n(r[9]), pctImposto: n(r[10]), pctFrete: n(r[11]), pctComissao: n(r[12]), pctCustoOp: n(r[13])
+  }));
+  ordenarLinhas();
+  parcelasPorPedido = {};
+  d.pedidos.forEach(r => {
+    const p = getParc(String(r[0]));
+    p.nfe = String(r[1] || '');
+    const rot = String(r[13] || '');
+    const custo = /custo/i.test(rot);
+    p.base = { faturado: /faturado/i.test(rot) || !custo, custo };
+    p.dev = devDeTexto(String(r[14] || ''));
+  });
+  const porPedido = {};
+  d.parcelas.forEach(r => { (porPedido[String(r[0])] = porPedido[String(r[0])] || []).push(r); });
+  Object.keys(porPedido).forEach(k => {
+    const rs = porPedido[k].sort((a, b) => n(a[1]) - n(b[1]));
+    const p = getParc(k);
+    p.n = Math.max(1, Math.min(60, n(rs[0][2]) || rs.length));
+    p.itens = rs.slice(0, p.n).map(r => ({
+      data: dataBRparaISO(r[3]),
+      valor: (r[5] === '' || r[5] === null || r[5] === undefined) ? null : Number(r[5]),
+      pago: String(r[6]) === 'Pago'
+    }));
+    while (p.itens.length < p.n) p.itens.push({ data: '', valor: null, pago: false });
+  });
+  agruparPorPedido(true).forEach(g => getParc(g.key));   // garante o estado de todos os pedidos antes do "snapshot"
+
+  el('nomeRelatorio').value = d.meta.nome;
+  el('statusImport').textContent = linhas.length ? (linhas.length + ' linha(s) carregada(s) deste fechamento.') : '';
+  el('statusImport').className = 'status ok';
+  el('statusExport').textContent = ''; el('statusSalvar').textContent = '';
+  popularFiltroVendedores();
+  renderizarTabela();
+  el('cardTabela').style.display = linhas.length ? 'block' : 'none';
+  atualizarCabecalho();
+  mostrarTela('trabalho');
+  snapshotSalvo = estadoSnapshot();
+  verificarSujo();
+}
+
+function devDeTexto(txt) {
+  const t = norm(txt), d = { imposto: false, frete: false, comissao: false, custoOp: false, lucro: false };
+  if (t.includes('imposto')) d.imposto = true;
+  if (t.includes('frete')) d.frete = true;
+  if (t.includes('comiss')) d.comissao = true;
+  if (t.includes('operacional')) d.custoOp = true;
+  if (t.includes('mercadoria')) d.custo = true;
+  if (t.includes('lucro')) d.lucro = true;
+  return d;
+}
+
+function atualizarCabecalho() {
+  const f = fechamentoAtual;
+  el('cabNome').textContent = f.nome;
+  el('cabMeta').textContent = 'Responsável: ' + f.responsavel + '  ·  Criado em ' + dataHoraBR(f.criadoEm) +
+    '  ·  Última atualização ' + dataHoraBR(f.atualizadoEm) + '  ·  ' + f.id;
+}
+
+// ---------- Detecção de alterações ----------
+function estadoSnapshot() {
+  return JSON.stringify([el('nomeRelatorio').value.trim(), linhas, parcelasPorPedido]);
+}
+function verificarSujo() {
+  if (!fechamentoAtual) return;
+  sujo = estadoSnapshot() !== snapshotSalvo;
+  const ind = el('indicador');
+  ind.textContent = sujo ? '● alterações não salvas' : '✓ tudo salvo';
+  ind.className = 'ind ' + (sujo ? 'sujo' : 'salvo');
+}
+['change', 'click'].forEach(ev => el('telaTrabalho').addEventListener(ev, () => setTimeout(verificarSujo, 0)));
+el('nomeRelatorio').addEventListener('input', verificarSujo);
+window.addEventListener('beforeunload', ev => { if (sujo) { ev.preventDefault(); ev.returnValue = ''; } });
+
+async function excluirFechamento(id, nome) {
+  if (!confirm('EXCLUIR o fechamento "' + nome + '"?\n\nTodos os itens, pedidos, parcelas e NFe dele serão apagados da planilha. Isso NÃO pode ser desfeito.')) return;
+  const st = el('statusLista');
+  st.textContent = 'Excluindo...'; st.className = 'status';
+  try {
+    await api('excluirFechamento', { id });
+    if (fechamentoAtual && fechamentoAtual.id === id) { sujo = false; fechamentoAtual = null; }
+    await abrirInicio();
+    el('statusLista').textContent = 'Fechamento "' + nome + '" excluído.';
+    el('statusLista').className = 'status ok';
+  } catch (e) {
+    st.textContent = 'Não foi possível excluir: ' + e.message; st.className = 'status err';
+    mostrarTela('inicio');
+  }
+}
+
+function excluirAtual() {
+  if (fechamentoAtual) excluirFechamento(fechamentoAtual.id, fechamentoAtual.nome);
+}
+
+function voltarLista() {
+  if (sujo && !confirm('Há alterações não salvas neste fechamento. Sair mesmo assim?')) return;
+  abrirInicio();
+}
+
+// ---------- Memória -> planilha ----------
+function montarPayload(nome) {
+  const itens = linhasFiltradasComIndice(true).map(({ l }) => {
+    const c = calcularLinha(l);
+    return [l.pedido, String(l.data || ''), l.nome, String(l.contato || ''), l.recebedor || '', l.descricao,
+      l.qtd, l.valorTotal, l.custoUnitario, l.pctNF, l.pctImposto, l.pctFrete, l.pctComissao, l.pctCustoOp,
+      c.custoTotal, c.lucroTotal, c.valorNF, c.imposto, c.frete, c.comissao, c.custoOperacional, c.lucroLiquido];
+  });
+  const grupos = agruparPorPedido(true);
+  const pedidos = [], parcelas = [];
+  grupos.forEach(g => {
+    const p = getParc(g.key), s = g.soma, rot = rotuloBase(g.key);
+    pedidos.push([g.key, p.nfe || '', String(g.contato || ''), g.vendedores.join(', '),
+      s.valorTotal, s.custoTotal, s.valorNF, s.imposto, s.frete, s.comissao, s.custoOperacional, s.lucroLiquido, p.n, rot,
+      textoDevolver(g.key), valorDevolver(g)]);
+    const vals = valoresParcelas(g.key, totalBaseParcelas(g));
+    p.itens.forEach((it, i) => {
+      parcelas.push([g.key, i + 1, p.n, it.data ? dataBR(it.data) : '', vals[i],
+        it.valor === null ? '' : it.valor, it.pago ? 'Pago' : 'Aberto', rot]);
+    });
+  });
+  const tot = somasVazias();
+  linhas.forEach(l => somarEm(tot, l));
+  return { id: fechamentoAtual.id, nome, itens, pedidos, parcelas,
+    resumo: { valorFaturado: tot.valorTotal, lucroLiquido: tot.lucroLiquido } };
+}
+
+async function salvarAtual() {
+  if (!fechamentoAtual || salvando) return;
+  const st = el('statusSalvar');
+  const nome = el('nomeRelatorio').value.trim();
+  if (!nome) { st.textContent = 'Informe o nome do fechamento antes de salvar.'; st.className = 'status err'; return; }
+  salvando = true; el('btnSalvar').disabled = true;
+  st.textContent = 'Salvando no Google Sheets...'; st.className = 'status';
+  try {
+    const payload = montarPayload(nome);
+    const snap = estadoSnapshot();
+    const r = await api('salvarFechamento', payload);
+    fechamentoAtual.nome = r.nome;
+    fechamentoAtual.atualizadoEm = r.atualizadoEm;
+    snapshotSalvo = snap;
+    atualizarCabecalho();
+    verificarSujo();
+    st.textContent = 'Salvo às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.';
+    st.className = 'status ok';
+  } catch (e) {
+    st.textContent = 'Não foi possível salvar: ' + e.message + ' (suas alterações continuam na tela).';
+    st.className = 'status err';
+  } finally { salvando = false; el('btnSalvar').disabled = false; }
+}
+
+// ---------- Início da página ----------
+sessao = { url: URL_APPS_SCRIPT, codigo: '' };
+abrirInicio();
+</script>
+</body>
+
+</html>
